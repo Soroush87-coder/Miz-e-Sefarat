@@ -846,6 +846,9 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .rs-link{background:var(--nv-chip)}
 .rs-occ{background:var(--nv-chip);color:var(--nv-ink)}
 .rs-pair.orphan{color:var(--ink)}
+/* Country page hero: same flag gradient as its card */
+.hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--g)}
+@supports (background:linear-gradient(in oklab,red,blue)){.hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--gk)}}
 /* Country cards: gradient drawn from the country's own flag colours */
 .ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--g);text-shadow:0 1px 2px rgba(0,0,0,.3)}
 @supports (background:linear-gradient(in oklab,red,blue)){.ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--gk)}}
@@ -1086,7 +1089,7 @@ const copyBtn = t => `<button class="copy" type="button" data-copy="${esc(t)}">�
 
 function renderCountry(pc){
   const s = countryStats(pc);
-  let h = `<div style="--cc:${colorOf(pc)}"><div class="hero"><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
+  let h = `<div style="--cc:${flagColors(pc)[0] || colorOf(pc)}"><div class="hero"${flagBg(pc)}><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button><button class="btn primary" type="button" data-act="newacc" data-id="${esc(pc)}">+ ثبت در ${esc(pName(pc))}</button></div></div>
     <div class="stats"><div class="stat active"><b>${faN(s.active)}</b><span>اکانت فعال</span></div><div class="stat check"><b>${faN(s.check)}</b><span>باید چک شود</span></div><div class="stat"><b>${faN(s.free)}</b><span>جای خالی مسافر</span></div><div class="stat"><b>${faN(s.people)}</b><span>مسافر در جریان</span></div><div class="stat"><b>${faN(s.unused + s.none)}</b><span>ایمیل آزاد</span></div><div class="stat"><b>${faN(s.freePhones)}</b><span>شماره آزاد</span></div></div></div>`;
   h += globalAlerts(pc);
