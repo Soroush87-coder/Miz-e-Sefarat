@@ -831,12 +831,12 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
    rippled velvet (SVG displacement + fold shading); account rows are navy. */
 .qsec,.rs-card{--cc:var(--nv-2)}
 .qhead,.rs-card-h{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(120deg,var(--nv-2),var(--nv) 65%);color:var(--nv-ink)}
-.qhead{padding:22px 22px 24px}
-.rs-card-h{padding:14px 16px}
-.cloth{position:absolute;z-index:-1;inset-block:-6px;right:-2%;width:min(420px,60%);pointer-events:none;opacity:.92;-webkit-mask-image:linear-gradient(to left,#000 35%,transparent 100%);mask-image:linear-gradient(to left,#000 35%,transparent 100%)}
+.qhead{padding:26px 24px;min-height:92px}
+.rs-card-h{padding:18px 18px;min-height:78px}
+.cloth{position:absolute;z-index:-1;inset-block:6px;right:10px;width:min(440px,72%);pointer-events:none;filter:saturate(1.15) drop-shadow(0 6px 10px rgba(3,10,28,.45));-webkit-mask-image:linear-gradient(to left,#000 55%,transparent 100%);mask-image:linear-gradient(to left,#000 55%,transparent 100%)}
+.rs-card-h > span.cloth{background:none;border-radius:0;padding:0;margin:0}
 .cloth svg{width:100%;height:100%;display:block}
-.cloth::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(6,16,38,.38) 0%,rgba(255,255,255,.16) 16%,rgba(6,16,38,.34) 34%,rgba(255,255,255,.12) 52%,rgba(6,16,38,.36) 70%,rgba(255,255,255,.14) 86%,rgba(6,16,38,.3) 100%),radial-gradient(60% 80% at 75% 15%,rgba(255,255,255,.28),transparent 65%),linear-gradient(90deg,rgba(15,37,71,.55),rgba(15,37,71,.15) 70%)}
-.qhead h2,.rs-card-h b{text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.qhead h2,.rs-card-h b{text-shadow:0 0 10px rgba(5,13,34,.85),0 0 3px rgba(5,13,34,.7),0 1px 2px rgba(0,0,0,.5)}
 .qhead .qn,.rs-card-h > span:not(.flag):not(.cloth){background:var(--nv-chip);backdrop-filter:blur(6px)}
 .sc-cred,.rs-pair{background:var(--nv);color:var(--nv-ink)}
 .sc-cred .lbl,.sc-cred span[style*="--muted"]{color:var(--nv-muted)!important}
@@ -978,7 +978,16 @@ const flagSVG = pc => `<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-
 const FLAG_Y = {GR:"YMin", UK:"YMin", AU:"YMin"};
 const flagBand = pc => `<span class="flag-band" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="xMid${FLAG_Y[pc] || "YMid"} slice">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</svg></span>`;
 let clothN = 0;
-const flagCloth = pc => { const id = "wv" + (++clothN); return `<span class="cloth" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="none"><defs><filter id="${id}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.11 0.03" numOctaves="1" seed="4"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation=".12"/></filter></defs><g filter="url(#${id})">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</g></svg></span>`; };
+const flagCloth = pc => {
+  // Waving velvet flag: a smooth sine displacement map bends the whole flag into folds,
+  // and a matching gradient shades the troughs dark and puts a soft sheen on the crests.
+  const id = "fl" + (++clothN), k = 2 * Math.PI * 1.35, ph = [...pc].reduce((a, c) => a + c.charCodeAt(0), 0) % 7;
+  let map = "", shade = "";
+  for (let i = 0; i <= 24; i++){ const t = i / 24, v = Math.sin(k * t + ph), c = Math.cos(k * t + ph);
+    map += `<stop offset='${t}' stop-color='rgb(${Math.round(128 + 120 * v)},128,128)'/>`;
+    shade += `<stop offset="${t}" stop-color="${c > 0 ? "#fff" : "#050d22"}" stop-opacity="${(c > 0 ? c * .28 : -c * .5).toFixed(2)}"/>`; }
+  const img = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='20' preserveAspectRatio='none'><linearGradient id='g'>${map}</linearGradient><rect width='300' height='20' fill='url(#g)'/></svg>`);
+  return `<span class="cloth" aria-hidden="true"><svg viewBox="0 -2.5 30 25" preserveAspectRatio="none"><defs><filter id="${id}f" filterUnits="userSpaceOnUse" x="0" y="-2.5" width="30" height="25" color-interpolation-filters="sRGB"><feImage href="${img}" x="0" y="-2.5" width="30" height="25" preserveAspectRatio="none" result="m"/><feDisplacementMap in="SourceGraphic" in2="m" scale="3.4" xChannelSelector="G" yChannelSelector="R"/><feGaussianBlur stdDeviation=".09"/></filter><linearGradient id="${id}s" gradientUnits="userSpaceOnUse" x1="0" x2="30" y1="0" y2="0">${shade}</linearGradient><linearGradient id="${id}v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#050d22" stop-opacity=".38"/></linearGradient></defs><g filter="url(#${id}f)">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}<rect width="30" height="20" fill="url(#${id}s)"/><rect width="30" height="20" fill="url(#${id}v)"/></g></svg></span>`; };
 const flagColors = pc => FLAGS[pc] ? [...new Set((FLAGS[pc]().match(/fill="#[0-9A-Fa-f]{3,6}"/g) || []).map(m => m.slice(6, -1).toUpperCase()))].filter(c => !["#FFF", "#FFFFFF", "#999"].includes(c)).slice(0, 3) : [];
 const flagGrad = pc => { const c = flagColors(pc); if (!c.length) return ""; if (c.length === 1) c.push(`color-mix(in srgb,${c[0]} 70%,#0f2547)`); return `linear-gradient(135deg,${c.map((x, i) => `${x} ${Math.round(i * 100 / (c.length - 1))}%`).join(",")})`; };
 const flagEl = (pc, cls = "") => `<span class="flag ${cls}">${flagSVG(pc)}</span>`;
