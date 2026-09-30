@@ -757,7 +757,7 @@ details.more[open] summary{margin-bottom:8px}
 .wl-st b{font-size:var(--fs-sm)}
 .wl-act{display:flex;gap:8px}
 @media (max-width:640px){.wl-acc-h{flex-direction:column;align-items:stretch}.wl-acc-h .sc-cred{width:100%}.wl-acc-side{flex-direction:row;align-items:center}.sc-cred div{flex-wrap:nowrap}.sc-cred .mono{font-size:var(--fs-xs);overflow-wrap:normal;word-break:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}.wl-row{grid-template-columns:1fr}.wl-sum{grid-template-columns:repeat(3,minmax(0,1fr))}.wl-sum b{font-size:var(--fs-lg)}}
-.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:var(--r-pill);z-index:30;font-size:var(--fs-sm);max-width:calc(100% - 32px);box-shadow:var(--sh-2)}
+.toast{display:flex;align-items:center;gap:12px;position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:var(--r-pill);z-index:30;font-size:var(--fs-sm);max-width:calc(100% - 32px);box-shadow:var(--sh-2)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:slide .2s ease-out}@keyframes slide{from{transform:translateX(-20px);opacity:.5}to{transform:none;opacity:1}}.ccard{animation:rise .35s ease-out both}@keyframes rise{from{transform:translateY(8px)}to{transform:none}}}
 
@@ -846,6 +846,8 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .rs-link{background:var(--nv-chip)}
 .rs-occ{background:var(--nv-chip);color:var(--nv-ink)}
 .rs-pair.orphan{color:var(--ink)}
+.toast .undo{border:0;background:var(--amber);color:var(--nv);font:inherit;font-weight:800;border-radius:var(--r-pill);padding:2px 14px;cursor:pointer}
+.toast .undo:focus-visible{outline:3px solid #fff;outline-offset:2px}
 /* Country page hero: same flag gradient as its card */
 .hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--g)}
 @supports (background:linear-gradient(in oklab,red,blue)){.hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--gk)}}
@@ -912,10 +914,13 @@ function snapOf(s){
 }
 function emit(){ for (const s of store.subs) s.next(snapOf(s)); }
 async function refresh(){ const j = await API("all"); store.data = j.data || {}; SERVER_AI = !!j.ai; emit(); }
+// Undo journal: while an undoable action runs, the first prior state of every touched doc is kept.
+let journal = null;
+const jot = (col, id) => { if (journal && !journal.some(j => j.col === col && j.id === id)) { const d = store.data[col]?.[id]; journal.push({col, id, prev:d ? JSON.parse(JSON.stringify(d)) : null}); } };
 function docRef(col, id){ return {id, path:col + "/" + id,
-  async set(data){ await API("set", {col, id, data}); (store.data[col] = store.data[col] || {})[id] = {...data}; emit(); },
-  async update(data){ const r = await API("update", {col, id, data}); (store.data[col] = store.data[col] || {})[id] = r.doc; emit(); },
-  async delete(confirm){ await API("delete", {col, id, confirm: confirm || ""}); if (store.data[col]) delete store.data[col][id]; emit(); },
+  async set(data){ jot(col, id); await API("set", {col, id, data}); (store.data[col] = store.data[col] || {})[id] = {...data}; emit(); },
+  async update(data){ jot(col, id); const r = await API("update", {col, id, data}); (store.data[col] = store.data[col] || {})[id] = r.doc; emit(); },
+  async delete(confirm){ jot(col, id); await API("delete", {col, id, confirm: confirm || ""}); if (store.data[col]) delete store.data[col][id]; emit(); },
   async get(){ const d = store.data[col]?.[id]; return {id, exists:!!d, data:() => d}; } }; }
 function query(col, order = null, lim = null){ return {path:col,
   orderBy:(f, dir = "asc") => query(col, [f, dir], lim), limit:n => query(col, order, n),
@@ -989,6 +994,21 @@ const prettyPhone = p => { const l = localPhone(p); const m = /^(0\d{2})(\d{3})(
 function guessOperator(p){ const m = /^\+971(5\d)/.exec(p || ""); if (!m) return ""; return ["50","54","56"].includes(m[1]) ? "Etisalat" : ["52","55","58"].includes(m[1]) ? "du" : ""; }
 function nextCode(prefix, ids){ let max = 0; for (const id of ids){ const m = new RegExp("^" + prefix + "-(\\d+)$").exec(id); if (m) max = Math.max(max, +m[1]); } return prefix + "-" + String(max + 1).padStart(2, "0"); }
 let toastT; function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
+// Toast with a «برگرد» button; undo() runs once, within 10 seconds.
+function toastUndo(msg, undo){
+  const t = $("#toast"); t.innerHTML = `<span>${esc(msg)}</span><button type="button" class="undo">برگرد</button>`; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 10000);
+  t.querySelector(".undo").onclick = async e => { e.currentTarget.disabled = true; clearTimeout(toastT); t.hidden = true; await undo(); };
+}
+async function undoable(fn){
+  const t = $("#toast"); journal = [];
+  try { await fn(); } finally {
+    const j = journal; journal = null;
+    if (j.length) toastUndo(t.hidden ? "انجام شد" : t.textContent, async () => {
+      for (const x of j.reverse()) await write(() => x.prev ? db.doc(x.col + "/" + x.id).set(x.prev) : db.doc(x.col + "/" + x.id).delete());
+      toast("برگشت؛ همه‌چیز مثل قبل شد"); });
+  }
+}
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const accId = (pc, em) => `${pc}__${em}`, regId = (pc, sim) => `${pc}__${sim}`;
@@ -1308,7 +1328,7 @@ async function queueAct(a, key){
   const [pc, i] = key.split("|"), s = (lastPlans[pc] || [])[+i]; if (!s) return;
   if (a === "q_ok"){ if (await assignTo(pc, s.e.code, s.add)) toast(`${faN(s.add.length)} نفر به Waitlist رفتند`); }
   if (a === "q_gone"){ await quick("gone", s.id); }
-  if (a === "q_skip"){ if (!skipAcc.has(pc)) skipAcc.set(pc, new Set()); skipAcc.get(pc).add(s.id); render(); }
+  if (a === "q_skip"){ if (!skipAcc.has(pc)) skipAcc.set(pc, new Set()); skipAcc.get(pc).add(s.id); render(); toastUndo("این اکانت کنار رفت", () => { skipAcc.get(pc)?.delete(s.id); render(); }); }
   if (a === "q_new"){
     if (!await saveAccount(pc, s.e.code, {status:"active", lastVerified:today(), simId:s.sim.code, createdAt:today()})) return;
     await setReg(pc, s.sim.code, "registered", s.e.code);
@@ -1970,7 +1990,7 @@ document.addEventListener("click", e => {
   if (a === "gopass"){ tab = "pass"; passFilter = id; passStatus = "waiting"; lsSet("tab4", tab); render(); window.scrollTo({top:0}); return; }
   if (a === "clearpick"){ picked.clear(); render(); return; }
   if (!canWrite && a !== "acc") { toast("این صفحه برای شما فقط خواندنی است"); return; }
-  if (a.startsWith("q_")){ b.disabled = true; queueAct(a, id).finally(() => { b.disabled = false; }); return; }
+  if (a.startsWith("q_")){ b.disabled = true; (a === "q_skip" ? queueAct(a, id) : undoable(() => queueAct(a, id))).finally(() => { b.disabled = false; }); return; }
   if (["ok","gone","phonetaken","phonefree"].includes(a)){ b.disabled = true; const inSheet = !!b.closest("#sheet"); quick(a, id).finally(() => { b.disabled = false; if (a === "ok" && inSheet) openAccount(id); }); return; }
   ({upload:() => uploadPassports(id || ""), editpass:() => editPassport(id), assign:assignPassports, newacc:() => newAccount(id, b.dataset.email || ""), acc:() => openAccount(id), addpeople:() => addPeople(id), person:() => editPerson(id), sim:() => editSim(id), email:() => editEmail(id), addportal:addPortal, bulk:bulkAdd}[a] || (() => {}))();
 });
