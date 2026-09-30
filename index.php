@@ -827,17 +827,15 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .ibtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .i-sim i{background:var(--teal-soft);color:#1f86a8}.i-mail i{background:var(--amber-soft);color:var(--amber-ink)}.i-bulk i{background:rgba(255,255,255,.22);color:#fff}
 /* ── Navy data surfaces ─────────────────────────────────────────────
-   Table headers are navy with the country flag draped behind the title as
-   rippled velvet (SVG displacement + fold shading); account rows are navy. */
+   Table headers take a gradient from the country's flag colours (navy when a
+   country has no flag); account rows are navy. */
 .qsec,.rs-card{--cc:var(--nv-2)}
-.qhead,.rs-card-h{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(120deg,var(--nv-2),var(--nv) 65%);color:var(--nv-ink)}
-.qhead{padding:26px 24px;min-height:92px}
-.rs-card-h{padding:18px 18px;min-height:78px}
-.cloth{position:absolute;z-index:-1;inset-block:6px;right:10px;width:min(440px,72%);pointer-events:none;filter:saturate(1.15) drop-shadow(0 6px 10px rgba(3,10,28,.45));-webkit-mask-image:linear-gradient(to left,#000 55%,transparent 100%);mask-image:linear-gradient(to left,#000 55%,transparent 100%)}
-.rs-card-h > span.cloth{background:none;border-radius:0;padding:0;margin:0}
-.cloth svg{width:100%;height:100%;display:block}
-.qhead h2,.rs-card-h b{text-shadow:0 0 10px rgba(5,13,34,.85),0 0 3px rgba(5,13,34,.7),0 1px 2px rgba(0,0,0,.5)}
-.qhead .qn,.rs-card-h > span:not(.flag):not(.cloth){background:var(--nv-chip);backdrop-filter:blur(6px)}
+.qhead,.rs-card-h{--g:linear-gradient(120deg,var(--nv-2),var(--nv));--gk:var(--g);position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.32)),var(--g);color:var(--nv-ink)}
+@supports (background:linear-gradient(in oklab,red,blue)){.qhead,.rs-card-h{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.32)),var(--gk)}}
+.qhead{padding:18px 22px}
+.rs-card-h{padding:12px 16px}
+.qhead h2,.rs-card-h b{text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.qhead .qn,.rs-card-h > span:not(.flag){background:var(--nv-chip);backdrop-filter:blur(6px)}
 .sc-cred,.rs-pair{background:var(--nv);color:var(--nv-ink)}
 .sc-cred .lbl,.sc-cred span[style*="--muted"]{color:var(--nv-muted)!important}
 .sc-cred .copy{background:var(--nv-chip);color:var(--nv-ink)}
@@ -977,19 +975,9 @@ const FLAGS = {
 const flagSVG = pc => `<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</svg>`;
 const FLAG_Y = {GR:"YMin", UK:"YMin", AU:"YMin"};
 const flagBand = pc => `<span class="flag-band" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="xMid${FLAG_Y[pc] || "YMid"} slice">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</svg></span>`;
-let clothN = 0;
-const flagCloth = pc => {
-  // Waving velvet flag: a smooth sine displacement map bends the whole flag into folds,
-  // and a matching gradient shades the troughs dark and puts a soft sheen on the crests.
-  const id = "fl" + (++clothN), k = 2 * Math.PI * 1.35, ph = [...pc].reduce((a, c) => a + c.charCodeAt(0), 0) % 7;
-  let map = "", shade = "";
-  for (let i = 0; i <= 24; i++){ const t = i / 24, v = Math.sin(k * t + ph), c = Math.cos(k * t + ph);
-    map += `<stop offset='${t}' stop-color='rgb(${Math.round(128 + 120 * v)},128,128)'/>`;
-    shade += `<stop offset="${t}" stop-color="${c > 0 ? "#fff" : "#050d22"}" stop-opacity="${(c > 0 ? c * .28 : -c * .5).toFixed(2)}"/>`; }
-  const img = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='20' preserveAspectRatio='none'><linearGradient id='g'>${map}</linearGradient><rect width='300' height='20' fill='url(#g)'/></svg>`);
-  return `<span class="cloth" aria-hidden="true"><svg viewBox="0 -2.5 30 25" preserveAspectRatio="none"><defs><filter id="${id}f" filterUnits="userSpaceOnUse" x="0" y="-2.5" width="30" height="25" color-interpolation-filters="sRGB"><feImage href="${img}" x="0" y="-2.5" width="30" height="25" preserveAspectRatio="none" result="m"/><feDisplacementMap in="SourceGraphic" in2="m" scale="3.4" xChannelSelector="G" yChannelSelector="R"/><feGaussianBlur stdDeviation=".09"/></filter><linearGradient id="${id}s" gradientUnits="userSpaceOnUse" x1="0" x2="30" y1="0" y2="0">${shade}</linearGradient><linearGradient id="${id}v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#050d22" stop-opacity=".38"/></linearGradient></defs><g filter="url(#${id}f)">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}<rect width="30" height="20" fill="url(#${id}s)"/><rect width="30" height="20" fill="url(#${id}v)"/></g></svg></span>`; };
 const flagColors = pc => FLAGS[pc] ? [...new Set((FLAGS[pc]().match(/fill="#[0-9A-Fa-f]{3,6}"/g) || []).map(m => m.slice(6, -1).toUpperCase()))].filter(c => !["#FFF", "#FFFFFF", "#999"].includes(c)).slice(0, 3) : [];
 const flagGrad = pc => { const c = flagColors(pc); if (!c.length) return ""; if (c.length === 1) c.push(`color-mix(in srgb,${c[0]} 70%,#0f2547)`); return `linear-gradient(135deg,${c.map((x, i) => `${x} ${Math.round(i * 100 / (c.length - 1))}%`).join(",")})`; };
+const flagBg = pc => { const g = flagGrad(pc); return g ? ` style="--g:${g};--gk:${g.replace("linear-gradient(", "linear-gradient(in oklab ")}"` : ""; };
 const flagEl = (pc, cls = "") => `<span class="flag ${cls}">${flagSVG(pc)}</span>`;
 const pName = pc => (CATALOG.find(c => c[0] === pc) || [pc, pc])[1];
 function normPhone(raw){ let d = String(raw).replace(/[^\d+]/g, ""); if (d.startsWith("00")) d = "+" + d.slice(2); if (/^05\d{8}$/.test(d)) d = "+971" + d.slice(1); else if (/^9715\d{8}$/.test(d)) d = "+" + d; else if (/^5\d{8}$/.test(d)) d = "+971" + d; return d; }
@@ -1298,7 +1286,7 @@ function renderQueue(){
   if (!withWork.length) return h + `<div class="sec"><div class="empty">پاسپورتی در انتظار ثبت نیست.</div></div>`;
   for (const p of withWork){
     const {waiting, steps} = planFor(p.code);
-    h += `<section class="qsec"><div class="qhead">${flagCloth(p.code)}<h2>${flagEl(p.code, "md")}${esc(pName(p.code))}</h2><span class="qn">${faN(waiting.length)} پاسپورت</span></div>
+    h += `<section class="qsec"><div class="qhead"${flagBg(p.code)}><h2>${flagEl(p.code, "md")}${esc(pName(p.code))}</h2><span class="qn">${faN(waiting.length)} پاسپورت</span></div>
       ${stageBar(1)}
       <div class="tasks">${steps.map((s, i) => stepCard(p.code, s, i, steps.length)).join("")}</div></section>`;
   }
@@ -1342,7 +1330,7 @@ function renderWl(){
   for (const c of countries){
     const cp = ppl.filter(p => p.portal === c.code);
     const accIds = [...new Set(cp.map(p => p.accountId))];
-    h += `<section class="qsec"><div class="qhead">${flagCloth(c.code)}<h2>${flagEl(c.code, "md")}${esc(pName(c.code))}</h2><span class="qn">${faN(cp.filter(p => p.status === "waitlist").length)} در ویت‌لیست · ${faN(cp.filter(p => p.status === "booked").length)} وقت گرفته</span></div><div class="tasks">`;
+    h += `<section class="qsec"><div class="qhead"${flagBg(c.code)}><h2>${flagEl(c.code, "md")}${esc(pName(c.code))}</h2><span class="qn">${faN(cp.filter(p => p.status === "waitlist").length)} در ویت‌لیست · ${faN(cp.filter(p => p.status === "booked").length)} وقت گرفته</span></div><div class="tasks">`;
     for (const aid of accIds){
       const a = S.accounts.get(aid), e = S.emails.get(a?.emailId || aid.split("__")[1]), m = a?.simId ? S.sims.get(a.simId) : null;
       const list = cp.filter(p => p.accountId === aid).sort((x, y) => (x.status === "booked") - (y.status === "booked") || (x.apptDate || "").localeCompare(y.apptDate || ""));
@@ -1393,7 +1381,7 @@ function renderRes(){
         <span class="rs-p mono">${m ? esc(prettyPhone(m.number)) : `<i>بدون شماره</i>`}</span>
         <span class="rs-occ ${n >= CAP ? "full" : ""}">${faN(n)}/${faN(CAP)}</span></button>`; }).join("")
       + orphan.map(m => `<div class="rs-pair orphan"><span class="rs-dot st-reg"></span><span class="rs-e">شماره تکراری، بدون اکانت</span><span class="rs-link">+</span><span class="rs-p mono">${esc(prettyPhone(m.number))}</span><span></span></div>`).join("");
-    return `<div class="rs-card"><div class="rs-card-h">${flagCloth(p.code)}${flagEl(p.code, "md")}<b>${esc(pName(p.code))}</b><span>${faN(accs.length)} اکانت</span></div><div class="rs-card-b">${rows}</div></div>`;
+    return `<div class="rs-card"><div class="rs-card-h"${flagBg(p.code)}>${flagEl(p.code, "md")}<b>${esc(pName(p.code))}</b><span>${faN(accs.length)} اکانت</span></div><div class="rs-card-b">${rows}</div></div>`;
   }).join("");
   const cnt = (n, extra) => `<span class="hcount">${faN(n)}</span>${extra ? `<span class="hcount2">${extra}</span>` : ""}`;
   const chip = (pc, st, txt) => `<span class="rs-chip st-${st}" style="--cc:${colorOf(pc)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
