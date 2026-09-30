@@ -898,6 +898,21 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .appt-read{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .appt-read .lbl{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
 .appt-read small{color:var(--muted)}
+/* Stage bar: the four steps of the work, on every page */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
+.fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.fl:hover{transform:translateY(-1px);box-shadow:var(--sh-2)}
+.fl-n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--muted);font-weight:800;font-size:var(--fs-sm)}
+.fl-t{display:flex;flex-direction:column;min-width:0;line-height:1.35}
+.fl-t b{color:var(--ink);font-size:var(--fs-sm);font-weight:800;white-space:nowrap}
+.fl-t small{font-size:var(--fs-2xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl-c{margin-inline-start:auto;flex:none;min-width:28px;height:24px;padding:0 8px;border-radius:var(--r-pill);display:grid;place-items:center;background:var(--soft);color:var(--muted);font-weight:800;font-size:var(--fs-xs)}
+.fl.has .fl-c{background:var(--nv);color:#fff}
+.fl-c.plus{background:var(--accent);color:#fff;font-size:var(--fs-md)}
+.fl.cur{border-color:var(--nv-2);box-shadow:0 0 0 3px color-mix(in srgb,var(--nv-2) 18%,transparent),var(--sh-1)}
+.fl.cur .fl-n{background:var(--nv);color:#fff}
+.fl-a{width:14px;height:14px;border-top:2px solid var(--line-strong);border-left:2px solid var(--line-strong);transform:rotate(-45deg)}
+@media (max-width:900px){.flow{grid-template-columns:1fr 1fr;gap:8px}.fl-a{display:none}.fl-t small{display:none}.fl{padding:8px 10px;gap:8px}.fl-t b{white-space:normal;font-size:var(--fs-xs)}}
 /* Add-traveller window: upload or type passport details */
 .ap-add{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ap-drop{padding:16px 12px;flex-direction:row;text-align:right;gap:12px;border-color:var(--accent);background:var(--accent-soft)}
@@ -1137,6 +1152,7 @@ function render(){
   let html;
   if (tab === "countries") html = country && S.portals.has(country) ? renderCountry(country) : renderCountries();
   else html = ({pass:renderQueue, wl:renderWl, res:renderRes, people:renderPeople}[tab] || renderQueue)();
+  html = flowBar() + html;
   if (html !== lastView) { $("#view").innerHTML = html; lastView = html; }
 }
 
@@ -1344,7 +1360,18 @@ function stepCard(pc, s, i, total){
     <div class="task-acts">${ex || ok ? `<div class="res-q">${ex ? "بعد از ورود به سایت VFS، چه شد؟" : "بعد از تلاش برای ساخت اکانت در سایت VFS، چه شد؟"}</div><div class="res-grid">${acts}</div>` : acts}</div></div>`;
 }
 const STAGES = ["آپلود پاسپورت", "ثبت در اکانت VFS", "Waitlist", "وقت گرفته شد"];
-const stageBar = cur => `<div class="stages">${STAGES.map((t, i) => `<div class="stg ${i < cur ? "done" : i === cur ? "cur" : ""}"><span>${i < cur ? "✓" : faN(i + 1)}</span>${t}</div>`).join(`<i></i>`)}</div>`;
+// The four stages of the work, on top of every page: where each traveller is and what comes next.
+function flowBar(){
+  const n = {pass:S.passports.filter(x => x.status === "waiting").length, wl:S.people.filter(p => p.status === "waitlist").length, bk:S.people.filter(p => p.status === "booked").length};
+  const cur = tab === "pass" ? 2 : tab === "wl" ? 3 : 0;
+  const st = (i, go, t, sub, cnt) => `<button type="button" class="fl ${i === cur ? "cur" : ""} ${cnt ? "has" : ""}" data-act="flow" data-id="${go}"><span class="fl-n">${faN(i)}</span><span class="fl-t"><b>${t}</b><small>${sub}</small></span>${cnt === null ? `<span class="fl-c plus">+</span>` : `<span class="fl-c">${faN(cnt)}</span>`}</button>`;
+  return `<nav class="flow" aria-label="مراحل کار">${[
+    st(1, "up", "آپلود پاسپورت", "خواندن خودکار اطلاعات", null),
+    st(2, "pass", "ثبت در اکانت VFS", "با ایمیل و شماره پیشنهادی", n.pass),
+    st(3, "wl", "Waitlist", "منتظر وقت", n.wl),
+    st(4, "wl", "وقت گرفته شد", "تاریخ وقت ثبت شده", n.bk)].join(`<i class="fl-a" aria-hidden="true"></i>`)}</nav>`;
+}
+const stageBar = cur =>`<div class="stages">${STAGES.map((t, i) => `<div class="stg ${i < cur ? "done" : i === cur ? "cur" : ""}"><span>${i < cur ? "✓" : faN(i + 1)}</span>${t}</div>`).join(`<i></i>`)}</div>`;
 function prow2(x){
   const isImg = (x.contentType || "").startsWith("image/");
   const left = x.expiry ? -ago(x.expiry) : null;
@@ -1379,7 +1406,6 @@ function renderQueue(){
   for (const p of withWork){
     const {waiting, steps} = planFor(p.code);
     h += `<section class="qsec"><div class="qhead"${flagBg(p.code)}><h2>${flagEl(p.code, "md")}${esc(pName(p.code))}</h2><span class="qn">${faN(waiting.length)} پاسپورت</span></div>
-      ${stageBar(1)}
       <div class="tasks">${steps.map((s, i) => stepCard(p.code, s, i, steps.length)).join("")}</div></section>`;
   }
   return h;
@@ -2119,6 +2145,7 @@ document.addEventListener("click", e => {
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
   if (a === "readappt") return apptReadSheet();
+  if (a === "flow"){ if (id === "up") return uploadPassports(""); document.querySelector(`.tab[data-tab="${id}"]`)?.click(); window.scrollTo(0, 0); return; }
   if (a === "pcountry"){ peopleCountry = id; render(); return; }
   if (a === "wlshow"){ wlShow = id; render(); return; }
   if (a === "book"){ if (canWrite) bookSheet([id]); return; }
