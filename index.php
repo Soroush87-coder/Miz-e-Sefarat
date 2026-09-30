@@ -89,6 +89,14 @@ function purge() {
     $d = json_decode($r['data'], true);
     if (!empty($d['uploadedAt']) && $d['uploadedAt'] <= $limit) { if (!empty($d['assetId'])) delfile($d['assetId']); deldoc('passports', $r['id']); }
   }
+  // finished travellers («اتمام کار») stay visible for 14 days, then go
+  $done = date('Y-m-d', time() - 14 * 86400);
+  foreach (pdo()->query("SELECT id, data FROM docs WHERE col='people'")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $d = json_decode($r['data'], true);
+    if (!in_array($d['status'] ?? '', ['removed', 'done'], true)) continue;
+    if (empty($d['doneAt'])) { $d['doneAt'] = date('Y-m-d'); putdoc('people', $r['id'], $d); }
+    elseif ($d['doneAt'] <= $done) deldoc('people', $r['id']);
+  }
 }
 
 // ---------- Claude API: read passports ----------
@@ -898,6 +906,10 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .appt-read{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .appt-read .lbl{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
 .appt-read small{color:var(--muted)}
+.ic-btn{min-width:34px;padding:0 10px;font-size:var(--fs-md)}
+.ic-btn:hover{border-color:var(--green);color:var(--green-ink)}
+.ic-btn.del:hover{border-color:var(--red);color:var(--red-ink);background:var(--red-soft)}
+.p3-act{display:flex;gap:6px;align-items:center}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1017,7 +1029,9 @@ const makeAssets = () => ({
 const FRESH = 30, STALE = 60, CAP = 5, KEEP_DAYS = 30;   // passports are deleted 30 days after upload
 const CATALOG = [["GR","یونان"],["IT","ایتالیا"],["FR","فرانسه"],["CZ","چک"],["FI","فنلاند"],["ES","اسپانیا"],["DE","آلمان"],["NL","هلند"],["BE","بلژیک"],["AT","اتریش"],["CH","سوئیس"],["PT","پرتغال"],["PL","لهستان"],["HU","مجارستان"],["SE","سوئد"],["DK","دانمارک"],["NO","نروژ"],["MT","مالت"],["CY","قبرس"],["HR","کرواسی"],["SI","اسلوونی"],["SK","اسلواکی"],["LU","لوکزامبورگ"],["LV","لتونی"],["LT","لیتوانی"],["EE","استونی"],["IS","ایسلند"],["BG","بلغارستان"],["RO","رومانی"],["UK","بریتانیا"],["US","آمریکا"],["CA","کانادا"],["AU","استرالیا"]];
 const ST_LABEL = {active:"فعال", check:"باید چک شود", unused:"استفاده نشده", none:"پاک شده / ندارد"};
-const P_STATUS = {waitlist:"Waitlist", booked:"وقت گرفت", done:"تمام شد", removed:"از داشبورد رفت"};
+const P_STATUS = {waitlist:"Waitlist", booked:"وقت گرفت", removed:"اتمام کار"};   // "removed" = work finished; kept 14 days, then deleted
+const P_OPTS = Object.entries(P_STATUS);
+const DONE_DAYS = 14;
 const LOG = {login_ok:"ورود موفق", no_account:"اکانت پاک شده بود", created:"اکانت ساخته شد", phone_taken:"شماره تکراری بود", email_taken:"ایمیل قبلاً اکانت داشت", added:"مسافر اضافه شد", booked:"وقت گرفته شد", status:"تغییر وضعیت مسافر", edit:"ویرایش اکانت", upload:"پاسپورت آپلود شد", deleted:"حذف", sim_swap:"شماره جابجا شد"};
 
 const $ = s => document.querySelector(s);
@@ -1462,7 +1476,7 @@ function renderWl(){
           return `<div class="wl-row ${booked ? "bk" : ""}">
             <div class="wl-who"><b>${esc(p.name)}</b></div>
             <div class="wl-st">${booked ? `<span class="pill ok">وقت گرفته</span><b class="mono">${esc(p.apptDate || "—")}</b>${p.apptTime ? `<small class="mono">${esc(p.apptTime)}</small>` : ""}` : p.status === "waitlist" ? `<span class="pill sun">Waitlist</span>` : `<span class="pill">${esc(P_STATUS[p.status])}</span>`}</div>
-            <div class="wl-act">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button></div></div>`; }).join("")}</div>
+            <div class="wl-act">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div></div>`; }).join("")}</div>
       </div>`;
     }
     h += `</div></section>`;
@@ -1590,20 +1604,21 @@ function renderPeople(){
   h += `<div class="fchips"><button type="button" class="fchip ${peopleCountry ? "" : "on"}" data-act="pcountry" data-id="">همه <b>${faN(base.filter(p => p.status !== "removed").length)}</b></button>
     ${used.map(p => `<button type="button" class="fchip ${peopleCountry === p.code ? "on" : ""}" data-act="pcountry" data-id="${esc(p.code)}" style="--cc:${colorOf(p.code)}">${flagEl(p.code, "sm")}${esc(pName(p.code))} <b>${faN(cnt(p.code))}</b></button>`).join("")}</div>
     <div class="toolbar"><input id="peopleQ" type="search" placeholder="جستجوی اسم، ایمیل یا شماره…" aria-label="جستجوی مسافر" value="${esc(peopleQ)}">
-      ${[["", "همه وضعیت‌ها"], ["waitlist", "Waitlist"], ["booked", "وقت گرفت"], ["done", "تمام شد"]].map(([v, t]) => `<button type="button" class="fchip sm ${peopleStatus === v ? "on" : ""}" data-act="pstatus2" data-id="${v}">${t}${v ? ` <b>${faN(stCnt(v))}</b>` : ""}</button>`).join("")}</div>`;
+      ${[["", "همه وضعیت‌ها"], ["waitlist", "Waitlist"], ["booked", "وقت گرفت"], ["removed", "اتمام کار"]].map(([v, t]) => `<button type="button" class="fchip sm ${peopleStatus === v ? "on" : ""}" data-act="pstatus2" data-id="${v}">${t}${v ? ` <b>${faN(stCnt(v))}</b>` : ""}</button>`).join("")}</div>`;
   if (!list.length) return h + `<section class="sec"><div class="empty">کسی با این فیلتر پیدا نشد.</div></section>`;
   return h + `<section class="sec"><div class="ptable">${list.map(p => {
     const a = S.accounts.get(p.accountId), m = a?.simId ? S.sims.get(a.simId) : null, e = S.emails.get(p.emailId);
-    const pill = {waitlist:"sun", booked:"ok", done:"", removed:"bad"}[p.status] || "";
+    const pill = {waitlist:"sun", booked:"ok", removed:""}[p.status] || "";
     return `<div class="prow3 ${p.status === "removed" ? "dim" : ""}" style="--cc:${colorOf(p.portal)}">
       <div class="p3-who">${flagEl(p.portal, "md")}<div><b>${esc(p.name)}</b><small>${esc(pName(p.portal))}</small></div></div>
       <div class="p3-info">${(() => { const pp = p.passportId ? S.passports.find(x => x.id === p.passportId) : null;
-        if (!pp || !(pp.passportNo || pp.nationality || pp.expiry)) return `<small style="color:var(--muted)">اطلاعات پاسپورت ثبت نشده</small>`;
-        const left = pp.expiry ? -ago(pp.expiry) : null, ec = left === null ? "" : left < 0 ? "bad" : left < 183 ? "warn" : "";
-        return `<div><span class="k">پاسپورت</span><span class="mono">${esc(pp.passportNo || "—")}</span></div><div><span class="k">ملیت</span>${esc(pp.nationality || "—")}</div><div><span class="k">انقضا</span><span class="mono ${ec}">${esc(pp.expiry || "—")}</span></div>`; })()}</div>
+        const src = pp || p;
+        if (!(src.passportNo || src.nationality || src.expiry)) return `<small style="color:var(--muted)">اطلاعات پاسپورت ثبت نشده</small>`;
+        const left = src.expiry ? -ago(src.expiry) : null, ec = left === null ? "" : left < 0 ? "bad" : left < 183 ? "warn" : "";
+        return `<div><span class="k">پاسپورت</span><span class="mono">${esc(src.passportNo || "—")}</span></div><div><span class="k">ملیت</span>${esc(src.nationality || "—")}</div><div><span class="k">انقضا</span><span class="mono ${ec}">${esc(src.expiry || "—")}</span></div>`; })()}</div>
       <div class="p3-cred"><span class="mono">${esc(e?.address || p.emailId)}</span>${e ? copyBtn(e.address) : ""}<br>${m ? `<span class="mono">${esc(prettyPhone(m.number))}</span>${copyBtn(localPhone(m.number))}` : `<small style="color:var(--muted)">شماره ثبت نشده</small>`}</div>
-      <div class="p3-st"><span class="pill ${pill}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? `<small class="mono">${esc(p.apptDate)}</small>` : ""}</div>
-      <button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button></div>`; }).join("")}</div></section>`;
+      <div class="p3-st"><span class="pill ${pill}">${esc(P_STATUS[p.status] || p.status)}</span>${p.status === "removed" ? `<small>حذف خودکار ${(() => { const d = DONE_DAYS - (ago(p.doneAt || today()) || 0); return d > 0 ? faN(d) + " روز دیگر" : "امروز"; })()}</small>` : p.apptDate ? `<small class="mono">${esc(p.apptDate)}</small>` : ""}</div>
+      <div class="p3-act"><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button>${p.status !== "removed" ? `<button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button>` : ""}<button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div></div>`; }).join("")}</div></section>`;
 }
 
 function renderLog(){
@@ -1639,7 +1654,7 @@ async function quick(act, id){
   if (act === "gone"){ const [pc, em] = id.split("__"), a = S.accounts.get(id);
     if (!await saveAccount(pc, em, {status:"none", lastVerified:""})) return;
     if (a?.simId) await setReg(pc, a.simId, "registered", "");
-    for (const p of occupants(id)) { await write(() => db.doc("people/" + p.id).update({status:"removed", note:(p.note ? p.note + " · " : "") + "اکانت پاک شده بود"})); if (p.passportId) await releasePassport(p.passportId); }
+    for (const p of occupants(id)) { await write(() => db.doc("people/" + p.id).update({status:"removed", doneAt:today(), note:(p.note ? p.note + " · " : "") + "اکانت پاک شده بود"})); if (p.passportId) await releasePassport(p.passportId); }
     await addLog("no_account", pc, {emailId:em, simId:a?.simId || ""}); toast("ثبت شد: این ایمیل برای این کشور آزاد است"); }
   if (act === "phonetaken"){ const [pc, sim] = id.split("__"); if (await setReg(pc, sim, "registered")) { await addLog("phone_taken", pc, {simId:sim}); toast("این شماره برای این کشور کنار رفت"); } }
   if (act === "phonefree"){ const [pc, sim] = id.split("__"); if (await setReg(pc, sim, "unknown")) toast("شماره آزاد شد"); }
@@ -1810,14 +1825,13 @@ function editPerson(pid){
     `${F.text("name","اسم",p.name,{req:true})}
     ${(() => { const a = S.accounts.get(p.accountId), m = a?.simId ? S.sims.get(a.simId) : null, e = S.emails.get(p.emailId);
       return `<div class="sc-cred"><div><span class="lbl">کشور</span>${flagEl(p.portal, "sm")}<b style="font-size:13px">${esc(pName(p.portal))}</b></div>${credLine("ایمیل", e?.address || p.emailId)}${m ? credLine("شماره", prettyPhone(m.number), localPhone(m.number)) : `<div><span class="lbl">شماره</span><span style="color:var(--muted)">ثبت نشده</span></div>`}</div>`; })()}
-    <div class="two">${F.sel("status","وضعیت",Object.entries(P_STATUS),p.status)}${F.date("apptDate","تاریخ وقت",p.apptDate || "")}</div>${F.area("note","یادداشت",p.note || "")}`,
+    <div class="two">${F.sel("status","وضعیت",P_OPTS,p.status)}${F.date("apptDate","تاریخ وقت",p.apptDate || "")}</div>${F.area("note","یادداشت",p.note || "")}`,
     async () => { const d = formData();
-      const ok = await write(() => db.doc("people/" + pid).update({name:d.name.trim(), status:d.status, apptDate:d.apptDate, note:d.note.trim()}));
-      if (ok && p.passportId && d.status === "removed") await releasePassport(p.passportId);
+      const doneAt = d.status === "removed" ? (p.status === "removed" ? p.doneAt || today() : today()) : "";
+      const ok = await write(() => db.doc("people/" + pid).update({name:d.name.trim(), status:d.status, apptDate:d.apptDate, note:d.note.trim(), doneAt}));
       if (ok && d.status !== p.status) await addLog(d.status === "booked" ? "booked" : "status", p.portal, {emailId:p.emailId, note:`${d.name.trim()}: ${P_STATUS[d.status]}${d.apptDate ? " · " + d.apptDate : ""}`});
       if (ok) toast("ذخیره شد"); return ok; },
-    `<button class="btn sm ghost-red" type="button" id="delBtn">حذف</button>`);
-  armDelete(async () => { const ok = await write(() => db.doc("people/" + pid).delete()); if (ok && p.passportId) await releasePassport(p.passportId); return ok; });
+    `<button class="btn sm ghost-red" type="button" data-act="pdel" data-id="${esc(pid)}">حذف مسافر</button>`);
 }
 
 // ---------- protected delete (phones & emails): red centred modal + typed confirmation ----------
@@ -2145,6 +2159,12 @@ document.addEventListener("click", e => {
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
   if (a === "readappt") return apptReadSheet();
+  if (a === "pfinish" || a === "pdel"){ const p = S.people.find(x => x.id === id); if (!p || !canWrite) return;
+    closeSheet();
+    return undoable(async () => {
+      if (a === "pfinish"){ if (await write(() => db.doc("people/" + id).update({status:"removed", doneAt:today()}))) { await addLog("status", p.portal, {emailId:p.emailId, note:`${p.name}: اتمام کار`}); toast(`${p.name}: اتمام کار · تا ${faN(DONE_DAYS)} روز در «مسافران» می‌ماند`); } }
+      else if (await write(() => db.doc("people/" + id).delete())) { await addLog("status", p.portal, {emailId:p.emailId, note:`${p.name}: حذف شد`}); toast(`${p.name} حذف شد`); }
+    }); }
   if (a === "flow"){ if (id === "up") return uploadPassports(""); document.querySelector(`.tab[data-tab="${id}"]`)?.click(); window.scrollTo(0, 0); return; }
   if (a === "pcountry"){ peopleCountry = id; render(); return; }
   if (a === "wlshow"){ wlShow = id; render(); return; }
@@ -2187,7 +2207,7 @@ render();
   sub("portals", db.collection("portals"), s => toMap(S.portals, s));
   sub("accounts", db.collection("accounts"), s => toMap(S.accounts, s, "id"));
   sub("regs", db.collection("regs"), s => toMap(S.regs, s, "id"));
-  sub("people", db.collection("people"), s => { S.people = s.docs.map(d => ({...d.data(), id:d.id})); });
+  sub("people", db.collection("people"), s => { S.people = s.docs.map(d => { const x = {...d.data(), id:d.id}; if (x.status === "done") x.status = "removed"; return x; }); });
   sub("passports", db.collection("passports"), s => { S.passports = s.docs.map(d => ({...d.data(), id:d.id})); });
   sub("logs", db.collection("logs").orderBy("at","desc").limit(1000), s => { S.logs = s.docs.map(d => ({...d.data(), id:d.id})); });
   setInterval(() => { if (!document.hidden && $("#sheet").hidden) refresh().catch(() => {}); }, 20000);
