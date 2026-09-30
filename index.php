@@ -872,6 +872,13 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .rs-card-h{padding:12px 16px}
 .qhead h2,.rs-card-h b{text-shadow:0 1px 3px rgba(0,0,0,.35)}
 .qhead .qn,.rs-card-h > span:not(.flag){background:var(--nv-chip)}
+/* Email & phone map: quiet cards — white header, flag colours only as a thin top strip */
+.rs-card{border:1px solid var(--line);box-shadow:var(--sh-1)}
+.rs-card-h,.rs-card-h[style]{position:relative;background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line);padding:16px 16px 12px}
+.rs-card-h::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--g)}
+.rs-card-h b{text-shadow:none}
+.rs-card-h > span:not(.flag){background:var(--soft);color:var(--muted)}
+.rs-chip{border:1px solid var(--line);background:var(--soft)}
 .sc-cred,.rs-pair{background:var(--nv);color:var(--nv-ink)}
 .sc-cred .lbl,.sc-cred span[style*="--muted"]{color:var(--nv-muted)!important}
 .sc-cred .copy{background:var(--nv-chip);color:var(--nv-ink)}
