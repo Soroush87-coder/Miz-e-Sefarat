@@ -891,6 +891,19 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .appt-read{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .appt-read .lbl{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
 .appt-read small{color:var(--muted)}
+/* Add-traveller window: upload or type passport details */
+.ap-add{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ap-drop{padding:16px 12px;flex-direction:row;text-align:right;gap:12px;border-color:var(--accent);background:var(--accent-soft)}
+.ap-drop svg{flex:none}
+.ap-drop span,.ap-manual span{font-size:var(--fs-xs);color:var(--muted);font-weight:600}
+.ap-manual{display:flex;align-items:center;gap:12px;text-align:right;border:2px dashed var(--line-strong);border-radius:var(--r-lg);padding:16px 12px;background:var(--surface);cursor:pointer;font:inherit;color:var(--ink)}
+.ap-manual:hover,.ap-drop:hover{border-style:solid}
+.ap-plus{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--nv);color:#fff!important;font-size:var(--fs-lg)!important;font-weight:800}
+.mrows{display:flex;flex-direction:column;gap:10px}.mrows:empty{display:none}
+.mrow{border:1.5px solid var(--nv-2);border-radius:var(--r-lg);padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.mrow-h{display:flex;align-items:center;justify-content:space-between}
+.mrow-h b{font-size:var(--fs-sm);color:var(--nv-2)}
+@media (max-width:640px){.ap-add{grid-template-columns:1fr}}
 /* Country page hero: same flag gradient as its card */
 .hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--g)}
 @supports (background:linear-gradient(in oklab,red,blue)){.hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--gk)}}
@@ -1426,11 +1439,11 @@ function renderWl(){
 // ---------- read a VFS appointment confirmation and book the matching travellers ----------
 const normName = v => String(v || "").toUpperCase().replace(/[^A-Z؀-ۿ ]+/g, " ").split(/\s+/).filter(Boolean);
 function matchPerson(app, pool){
-  if (app.passportNo){ const hit = pool.find(p => { const pp = p.passportId && S.passports.find(x => x.id === p.passportId); return pp?.passportNo && pp.passportNo.toUpperCase() === app.passportNo; }); if (hit) return hit; }
+  if (app.passportNo){ const hit = pool.find(p => { const pp = p.passportId && S.passports.find(x => x.id === p.passportId), no = pp?.passportNo || p.passportNo; return no && no.toUpperCase() === app.passportNo; }); if (hit) return hit; }
   const a = normName(app.name); if (!a.length) return null;
   let best = null, bestScore = 0;
   for (const p of pool){ const pp = p.passportId && S.passports.find(x => x.id === p.passportId);
-    for (const cand of [p.name, pp?.name, pp ? `${pp.firstName || ""} ${pp.lastName || ""}` : ""]){
+    for (const cand of [p.name, pp?.name, pp ? `${pp.firstName || ""} ${pp.lastName || ""}` : `${p.firstName || ""} ${p.lastName || ""}`]){
       const b = normName(cand); if (!b.length) continue;
       const score = a.filter(t => b.includes(t)).length / Math.max(a.length, b.length);
       if (score > bestScore){ bestScore = score; best = p; } } }
@@ -1690,15 +1703,22 @@ function openAccount(id){
       if (ok && d.simId && d.status === "active") await setReg(pc, d.simId, "registered", em);
       if (ok) { await addLog("edit", pc, {emailId:em, simId:d.simId}); toast("ذخیره شد"); } return ok; });
 }
-function addPeople(id){
+function addPeople(id, pre = []){
   const [pc, em] = id.split("__"), free = CAP - occupants(id).length;
   if (free <= 0) { toast("این اکانت پر است"); return; }
   const a = S.accounts.get(id), sim = a?.simId ? S.sims.get(a.simId) : null;
   const byAt = (x, y) => (x.at || "").localeCompare(y.at || "");
   const here = S.passports.filter(x => x.portal === pc && x.status === "waiting").sort(byAt);
   const other = S.passports.filter(x => x.portal !== pc && x.status === "waiting").sort(byAt);
-  const sel = new Set();
-  const manual = () => ($("#names")?.value || "").split("\n").map(x => x.trim()).filter(Boolean);
+  const sel = new Set(pre.filter(pid => S.passports.some(x => x.id === pid && x.status === "waiting")).slice(0, free));
+  // travellers without a passport scan: typed passport details, one form row each
+  const manual = () => [...document.querySelectorAll(".mrow")].map(r => { const v = k => r.querySelector(`[data-m="${k}"]`).value.trim();
+    return {firstName:v("firstName").toUpperCase(), lastName:v("lastName").toUpperCase(), passportNo:v("passportNo").toUpperCase(), nationality:v("nationality").toUpperCase(), expiry:v("expiry")}; })
+    .filter(x => x.firstName || x.lastName);
+  const mrowHTML = () => `<div class="mrow"><div class="mrow-h"><b>مسافر بدون پاسپورت</b><button type="button" class="fx" data-m-rm aria-label="حذف">×</button></div>
+    <div class="two"><div class="field"><label>اسم</label><input data-m="firstName" dir="ltr" class="ltr" placeholder="ALI"></div><div class="field"><label>فامیل</label><input data-m="lastName" dir="ltr" class="ltr" placeholder="AHMADI"></div></div>
+    <div class="two"><div class="field"><label>شماره پاسپورت</label><input data-m="passportNo" dir="ltr" class="ltr" placeholder="X12345678"></div><div class="field"><label>ملیت</label><input data-m="nationality" dir="ltr" class="ltr" placeholder="IRAN"></div></div>
+    <div class="two"><div class="field"><label>تاریخ انقضای پاسپورت</label><input data-m="expiry" type="date" dir="ltr"></div><span></span></div></div>`;
   const card = x => {
     const on = sel.has(x.id), full = !on && sel.size + manual().length >= free, isImg = (x.contentType || "").startsWith("image/");
     return `<button type="button" class="pk ${on ? "on" : ""}" data-pk="${esc(x.id)}" ${full ? "disabled" : ""} aria-pressed="${on}">
@@ -1722,23 +1742,33 @@ function addPeople(id){
   };
   openSheet(`مسافر · ${pName(pc)}`,
     `<div class="sc-cred">${credLine("ایمیل", S.emails.get(em)?.address || em)}${sim ? credLine("شماره", prettyPhone(sim.number), localPhone(sim.number)) : ""}</div>
+    <div class="ap-add">
+      <label class="dropz ap-drop" for="apFiles">${UP_ICON}<div><b>آپلود پاسپورت</b><br><span>عکس یا PDF پاسپورت · بعد از آپلود همین‌جا انتخاب می‌شود</span></div><input id="apFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"></label>
+      <button type="button" class="ap-manual" id="apManual"><span class="ap-plus">+</span><div><b>مسافر بدون پاسپورت</b><br><span>اسم، فامیل، شماره، ملیت و انقضای پاسپورت را دستی وارد کنید</span></div></button>
+    </div>
+    <div id="mRows" class="mrows"></div>
     <div class="up-lbl" style="justify-content:space-between"><span>${flagEl(pc, "sm")} در انتظار ثبت · ${esc(pName(pc))}</span><span class="up-count" id="apCount"></span></div>
     <div class="pks" id="apHere"></div>
     ${other.length ? `<details class="more"><summary>پاسپورت‌های کشورهای دیگر (${faN(other.length)})</summary><div class="pks" id="apOther"></div></details>` : ""}
-    <details class="more"><summary>اسم بدون پاسپورت</summary>${F.area("names","هر خط یک نفر","",{ph:"علی احمدی"})}</details>
     <div class="two">${F.sel("status","وضعیت",[["waitlist","Waitlist"],["booked","وقت گرفته شد"]],"waitlist")}${F.date("apptDate","تاریخ وقت","")}</div>`,
     async () => { const d = formData(), names = manual();
       const pps = [...sel].map(pid => S.passports.find(x => x.id === pid)).filter(Boolean);
       if (!names.length && !pps.length) { toast("حداقل یک نفر انتخاب کنید"); return false; }
       if (names.length + pps.length > free) { toast(`فقط ${faN(free)} جا دارد`); return false; }
-      const all = [...pps.map(x => ({name:x.name || "بی‌نام", pp:x})), ...names.map(n => ({name:n, pp:null}))];
+      const all = [...pps.map(x => ({name:x.name || "بی‌نام", pp:x})), ...names.map(n => ({name:[n.firstName, n.lastName].filter(Boolean).join(" "), pp:null, m:n}))];
       for (const x of all){ const ref = db.collection("people").doc();
-        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, accountId:id, status:d.status, apptDate:d.apptDate, note:"", passportId:x.pp?.id || "", addedAt:today()}))) return false;
+        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, accountId:id, status:d.status, apptDate:d.apptDate, note:"", passportId:x.pp?.id || "", addedAt:today(), ...(x.m || {})}))) return false;
         if (x.pp) await write(() => db.doc("passports/" + x.pp.id).update({status:"assigned", portal:pc, accountId:id, emailId:em, personId:ref.id})); }
       await saveAccount(pc, em, {status:"active", lastVerified:today()});
       await addLog(d.status === "booked" ? "booked" : "added", pc, {emailId:em, simId:a?.simId || "", note:all.map(x => x.name).join("، ")});
       toast(`${faN(all.length)} مسافر اضافه شد`); return true; }, "", "اضافه کن");
-  $("#names").addEventListener("input", drawCards);
+  const addRow = () => {
+    if (sel.size + document.querySelectorAll(".mrow").length >= free) { toast(`فقط ${faN(free)} جا دارد`); return; }
+    $("#mRows").insertAdjacentHTML("beforeend", mrowHTML()); $("#mRows .mrow:last-child [data-m=firstName]").focus(); drawCards(); };
+  $("#apManual").onclick = addRow;
+  $("#mRows").addEventListener("click", e => { if (e.target.closest("[data-m-rm]")) { e.target.closest(".mrow").remove(); drawCards(); } });
+  $("#mRows").addEventListener("input", drawCards);
+  $("#apFiles").onchange = e => { if (e.target.files.length) uploadPassports(pc, e.target.files, pids => addPeople(id, [...sel, ...pids])); };
   drawCards();
 }
 function editPerson(pid){
@@ -1874,7 +1904,7 @@ const PLANE_SVG = `<svg viewBox="0 0 240 300" aria-hidden="true"><defs>
 <path d="M112 34c3-6 13-6 16 0l-2 7c-4-2-8-2-12 0z" fill="#27406f"/>
 <path d="M120 60v180" stroke="#c9d7f5" stroke-width="1" stroke-dasharray="3 5"/></svg>`;
 const UP_ICON = `<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>`;
-function uploadPassports(pcPre, initialFiles){
+function uploadPassports(pcPre, initialFiles, onDone){
   if (!assets){ toast("آپلود فایل در این نما در دسترس نیست"); return; }
   const ps = portalsList();
   let pc = pcPre || (tab === "countries" && country && S.portals.has(country) ? country : "") || ps[0]?.code || "", files = [], phase = "pick", fresh = new Set(), grouped = false;
@@ -1908,7 +1938,7 @@ function uploadPassports(pcPre, initialFiles){
       $("#upBody").innerHTML = `<div class="up-step"><div class="up-lbl"><i>۳</i>اطلاعات را بررسی کنید <span class="up-count">${faN(good.length)} پاسپورت · ${esc(pName(pc))}</span></div>
         <div class="flist2">${good.map(x => reviewCard(x, files.indexOf(x))).join("")}</div></div>
         ${files.some(x => x.state === "err") ? `<div class="flist2">${files.filter(x => x.state === "err").map(row).join("")}</div>` : ""}`;
-      const btn = $("#sheetSave"); btn.textContent = "ذخیره و رفتن به «در انتظار ثبت»"; btn.disabled = files.some(x => x.reading);
+      const btn = $("#sheetSave"); btn.textContent = onDone ? "ذخیره و برگشت به انتخاب مسافر" : "ذخیره و رفتن به «در انتظار ثبت»"; btn.disabled = files.some(x => x.reading);
       $("#sheetCancel").hidden = true;
       document.querySelectorAll("[data-rv]").forEach(el => el.oninput = () => { const [i, k] = el.dataset.rv.split(":"); (files[+i].vals ||= {})[k] = el.value.trim(); el.classList.toggle("empty", !el.value.trim()); });
       document.querySelectorAll("[data-rv-retry]").forEach(b => b.onclick = async () => { const x = files[+b.dataset.rvRetry]; x.reading = true; x.err = ""; draw();
@@ -1956,8 +1986,9 @@ function uploadPassports(pcPre, initialFiles){
           if (!d || ["firstName","lastName","passportNo","nationality","expiry"].some(k => (d[k] || "") !== patch[k])) await write(() => db.doc("passports/" + x.pid).update(patch));
         }
         files.forEach(x => x.url && URL.revokeObjectURL(x.url));
-        tab = "pass"; lsSet("tab4", tab); render();
-        toast("ذخیره شد"); return true;
+        toast("ذخیره شد");
+        if (onDone) { const pids = files.filter(f => f.pid).map(f => f.pid); setTimeout(() => onDone(pids), 60); return true; }
+        tab = "pass"; lsSet("tab4", tab); render(); return true;
       }
       if (!files.length || !pc) return false;
       phase = "busy"; draw();
