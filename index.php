@@ -164,6 +164,39 @@ function ai_read($ids) {
   json_out(['ok' => 1, 'updated' => $ok, 'failed' => count($errors), 'errors' => (object)$errors]);
 }
 
+// ---------- Claude API: read a VFS appointment confirmation (file or pasted email text) ----------
+function ai_read_appt($fileId, $text) {
+  global $CONFIG, $DATA;
+  if ($CONFIG['anthropic_api_key'] === '') fail('خواندن خودکار فعال نیست؛ کلید API در تنظیمات فایل خالی است', 'not_granted');
+  @set_time_limit(180);
+  $content = [];
+  if (is_string($fileId) && preg_match('/^[a-f0-9]{32}$/', $fileId)) {
+    $s = pdo()->prepare('SELECT type FROM files WHERE id=?'); $s->execute([$fileId]); $t = $s->fetchColumn();
+    $path = "$DATA/files/$fileId";
+    if (!$t || !is_file($path)) fail('فایل پیدا نشد');
+    [$b64, $t2] = image_for_api($path, $t);
+    $content[] = $t2 === 'application/pdf'
+      ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => $b64]]
+      : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $t2, 'data' => $b64]];
+  } elseif (is_string($text) && trim($text) !== '') {
+    $content[] = ['type' => 'text', 'text' => "Email text:\n" . mb_substr($text, 0, 20000)];
+  } else fail('فایل یا متنی برای خواندن نیست');
+  $content[] = ['type' => 'text', 'text' => 'This is a visa appointment confirmation (usually from VFS Global): a letter, an email, or a screenshot. Extract the appointment details. Reply with only one JSON object like {"country":"GR","date":"2026-10-12","time":"10:30","center":"Dubai","reference":"GRDU123456","applicants":[{"name":"GIVEN NAMES SURNAME","passportNo":"X12345678"}]}. country is the two-letter code of the destination country whose visa this is (use UK for the United Kingdom). date is YYYY-MM-DD, time is 24-hour HH:MM. List every applicant named. Use an empty string for anything not shown. If this is not an appointment confirmation, reply {"error":"not_appointment"}.'];
+  $res = null; $err = '';
+  for ($try = 0; $try < 2 && !$res; $try++) { [$res, $err] = anthropic(['model' => $CONFIG['model'], 'max_tokens' => 800, 'messages' => [['role' => 'user', 'content' => $content]]]); if (!$res && $try === 0) sleep(1); }
+  if (is_string($fileId) && preg_match('/^[a-f0-9]{32}$/', $fileId)) delfile($fileId);
+  if (!$res) fail($err, 'upstream_error', 502);
+  $txt = ''; foreach (($res['content'] ?? []) as $blk) if (($blk['type'] ?? '') === 'text') $txt .= $blk['text'];
+  $r = preg_match('/\{.*\}/s', $txt, $m) ? json_decode($m[0], true) : null;
+  if (!is_array($r)) fail('پاسخ قابل خواندن نبود', 'upstream_error', 502);
+  if (!empty($r['error'])) fail('این فایل نامه تأیید وقت به نظر نمی‌رسد', 'invalid_argument');
+  $str = fn($k) => trim((string)($r[$k] ?? ''));
+  $apps = [];
+  foreach ((is_array($r['applicants'] ?? null) ? $r['applicants'] : []) as $a) if (is_array($a)) $apps[] = ['name' => trim((string)($a['name'] ?? '')), 'passportNo' => strtoupper(trim((string)($a['passportNo'] ?? '')))];
+  json_out(['ok' => 1, 'appt' => ['country' => strtoupper($str('country')), 'date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $str('date')) ? $str('date') : '',
+    'time' => preg_match('/^\d{1,2}:\d{2}$/', $str('time')) ? $str('time') : '', 'center' => $str('center'), 'reference' => $str('reference'), 'applicants' => $apps]]);
+}
+
 // ---------- API ----------
 if (isset($_GET['api'])) {
   if (!$authed) fail('login', 'unauthenticated', 401);
@@ -215,6 +248,8 @@ if (isset($_GET['api'])) {
         $b = body(); delfile($b['id'] ?? ''); json_out(['ok' => 1]);
       case 'read':
         $b = body(); ai_read($b['ids'] ?? []);
+      case 'readappt':
+        $b = body(); ai_read_appt($b['fileId'] ?? null, $b['text'] ?? null);
       case 'export':
         $all = []; foreach (pdo()->query("SELECT col, id, data FROM docs WHERE col IN ('logs','emails','sims')")->fetchAll(PDO::FETCH_ASSOC) as $r) $all[$r['col']][$r['id']] = json_decode($r['data'], true);
         $names = ['login_ok'=>'ورود موفق','no_account'=>'اکانت پاک شده بود','created'=>'اکانت ساخته شد','phone_taken'=>'شماره تکراری بود','email_taken'=>'ایمیل قبلاً اکانت داشت','added'=>'مسافر اضافه شد','booked'=>'وقت گرفته شد','status'=>'تغییر وضعیت مسافر','edit'=>'ویرایش اکانت','upload'=>'پاسپورت آپلود شد'];
@@ -237,7 +272,7 @@ if (isset($_GET['api'])) {
 if (!$authed) { ?>
 <!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><link rel="manifest" href="?manifest=1"><meta name="theme-color" content="#053F5C"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="میز سفارت"><title>ورود · میز وقت سفارت</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23053F5C'/><circle cx='32' cy='32' r='12' fill='%23F7AD19'/></svg>"><link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADC0lEQVR42u3dPU4rSxSF0a4SpEyJgGkwBgbDGDwNAk+J1IGJkRAyuH/q7ForftJ93f7u5jjhtmUQj8+v14WyLudTG+H/owmYpMCbiEmKu4mYpLibkEkKuwmZpLC7mDnS2s00IZO01l3MJK11FzNJUTchk3SCdDGTtNZdzCRF3cVMUtTd6yJJX/tvCBy50l3MJEXdxUxS1G5o5rihrTMVV7qLmaSonRxknxzWmcorbaHJXWjrTPWVttBk39AQEbRzg4Szw0Lj5IChg3ZukHJ2WGicHCBo2EFzP2OhQdAgaBA0ggZBg6BB0CBoBA2CBkGDoEHQCBoEDYIGQYOgETQIGg704BWs7/Pt4+b/9un9xQtbkV9jsHPAAhd0fMTiFnRsxOL2pTA+5hH+fAstZGttocVsrS301MFYawsdtX7WWtBxcYha0HFRiFrQcTGIWtBxEcwedRez5xI0CNqKeT5B+7A9p6BxclhnzytoH67nFjQIGgTt3Jjw+S00ggZB+3HrPQgaBI2gQdDuRu9D0CBoEDSCBkGDoEHQIGgEDYIGQW/PLwSf631YaAQNggZBuxu9B0FjoUHQftx6fkGDoEHQzo4Zn7v7cD2voEHQVstzCtqH7fkEjZPDSnsuQfvwPY+gReA5BC0GMQt6mijELOiYOMT8XXt8fr16DT8b+ZeDC9lCx0QjZgsdsdZCttAxMYnZQpdfbBELunzcIhZ06cAFLGjwpRBBg6BB0CBoEDSCBkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBM3vQl/OpeQ0kuJxPzULj5ABBw15Bu6NJuJ8tNE4OKBG0s4Pq54aFxskBZYJ2dlD53LDQ5J8cVpqq62yhmeNLoZWm4jr/utCiplrMTg7mODmsNBXX+aaFFjVVYr755BA1FWJ2QzPXDW2lqbTOf15oUTNyzP86OUTNqDEvy7LcFad/+J5RQl7lS6G1ZqSY7w5a1IwU890nhxOEUUJebaGtNSM1s1mA1pojxm/zRRU2e/4U3/VEELeIt3bYzStuEUcFLXABb+ELPztIlaSm4tQAAAAASUVORK5CYII="><link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADC0lEQVR42u3dPU4rSxSF0a4SpEyJgGkwBgbDGDwNAk+J1IGJkRAyuH/q7ForftJ93f7u5jjhtmUQj8+v14WyLudTG+H/owmYpMCbiEmKu4mYpLibkEkKuwmZpLC7mDnS2s00IZO01l3MJK11FzNJUTchk3SCdDGTtNZdzCRF3cVMUtTd6yJJX/tvCBy50l3MJEXdxUxS1G5o5rihrTMVV7qLmaSonRxknxzWmcorbaHJXWjrTPWVttBk39AQEbRzg4Szw0Lj5IChg3ZukHJ2WGicHCBo2EFzP2OhQdAgaBA0ggZBg6BB0CBoBA2CBkGDoEHQCBoEDYIGQYOgETQIGg704BWs7/Pt4+b/9un9xQtbkV9jsHPAAhd0fMTiFnRsxOL2pTA+5hH+fAstZGttocVsrS301MFYawsdtX7WWtBxcYha0HFRiFrQcTGIWtBxEcwedRez5xI0CNqKeT5B+7A9p6BxclhnzytoH67nFjQIGgTt3Jjw+S00ggZB+3HrPQgaBI2gQdDuRu9D0CBoEDSCBkGDoEHQIGgEDYIGQW/PLwSf631YaAQNggZBuxu9B0FjoUHQftx6fkGDoEHQzo4Zn7v7cD2voEHQVstzCtqH7fkEjZPDSnsuQfvwPY+gReA5BC0GMQt6mijELOiYOMT8XXt8fr16DT8b+ZeDC9lCx0QjZgsdsdZCttAxMYnZQpdfbBELunzcIhZ06cAFLGjwpRBBg6BB0CBoEDSCBkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBM3vQl/OpeQ0kuJxPzULj5ABBw15Bu6NJuJ8tNE4OKBG0s4Pq54aFxskBZYJ2dlD53LDQ5J8cVpqq62yhmeNLoZWm4jr/utCiplrMTg7mODmsNBXX+aaFFjVVYr755BA1FWJ2QzPXDW2lqbTOf15oUTNyzP86OUTNqDEvy7LcFad/+J5RQl7lS6G1ZqSY7w5a1IwU890nhxOEUUJebaGtNSM1s1mA1pojxm/zRRU2e/4U3/VEELeIt3bYzStuEUcFLXABb+ELPztIlaSm4tQAAAAASUVORK5CYII=">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap">
 <style>
 :root{--ink:#1f2a4d;--muted:#7a84a6;--accent:#5b6cff;--line:#e6e9f4;--soft:#f5f7fd;--accent-soft:#eceeff;--amber:#F7AD19;--navy:#053F5C;--red-soft:#ffebed;--r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-pill:999px; --fs-2xs:11px; --fs-xs:12px; --fs-sm:13px; --fs-base:14.5px; --fs-md:16px; --fs-lg:19px; --fs-xl:24px; --fs-2xl:30px; --fs-3xl:38px; --sh-1:0 1px 2px rgba(40,50,110,.05),0 4px 10px rgba(40,50,110,.07); --sh-2:0 2px 4px rgba(40,50,110,.04),0 12px 30px rgba(40,50,110,.08); --sh-3:0 4px 8px rgba(40,50,110,.06),0 20px 44px rgba(40,50,110,.16); --sh-pop:0 30px 80px rgba(31,42,77,.28); --ease:cubic-bezier(.2,.7,.2,1); --dur:.16s; --red-ink:#d8394a; --green-ink:#12936a; --amber-ink:#9a6400; --line-strong:#cdd3f3;}
 *{box-sizing:border-box}
@@ -306,7 +341,7 @@ label{font-size:var(--fs-sm);font-weight:700;color:var(--muted)}
 <title>میز وقت سفارت</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23053F5C'/><circle cx='32' cy='32' r='12' fill='%23F7AD19'/></svg>"><link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADC0lEQVR42u3dPU4rSxSF0a4SpEyJgGkwBgbDGDwNAk+J1IGJkRAyuH/q7ForftJ93f7u5jjhtmUQj8+v14WyLudTG+H/owmYpMCbiEmKu4mYpLibkEkKuwmZpLC7mDnS2s00IZO01l3MJK11FzNJUTchk3SCdDGTtNZdzCRF3cVMUtTd6yJJX/tvCBy50l3MJEXdxUxS1G5o5rihrTMVV7qLmaSonRxknxzWmcorbaHJXWjrTPWVttBk39AQEbRzg4Szw0Lj5IChg3ZukHJ2WGicHCBo2EFzP2OhQdAgaBA0ggZBg6BB0CBoBA2CBkGDoEHQCBoEDYIGQYOgETQIGg704BWs7/Pt4+b/9un9xQtbkV9jsHPAAhd0fMTiFnRsxOL2pTA+5hH+fAstZGttocVsrS301MFYawsdtX7WWtBxcYha0HFRiFrQcTGIWtBxEcwedRez5xI0CNqKeT5B+7A9p6BxclhnzytoH67nFjQIGgTt3Jjw+S00ggZB+3HrPQgaBI2gQdDuRu9D0CBoEDSCBkGDoEHQIGgEDYIGQW/PLwSf631YaAQNggZBuxu9B0FjoUHQftx6fkGDoEHQzo4Zn7v7cD2voEHQVstzCtqH7fkEjZPDSnsuQfvwPY+gReA5BC0GMQt6mijELOiYOMT8XXt8fr16DT8b+ZeDC9lCx0QjZgsdsdZCttAxMYnZQpdfbBELunzcIhZ06cAFLGjwpRBBg6BB0CBoEDSCBkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBM3vQl/OpeQ0kuJxPzULj5ABBw15Bu6NJuJ8tNE4OKBG0s4Pq54aFxskBZYJ2dlD53LDQ5J8cVpqq62yhmeNLoZWm4jr/utCiplrMTg7mODmsNBXX+aaFFjVVYr755BA1FWJ2QzPXDW2lqbTOf15oUTNyzP86OUTNqDEvy7LcFad/+J5RQl7lS6G1ZqSY7w5a1IwU890nhxOEUUJebaGtNSM1s1mA1pojxm/zRRU2e/4U3/VEELeIt3bYzStuEUcFLXABb+ELPztIlaSm4tQAAAAASUVORK5CYII="><link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADC0lEQVR42u3dPU4rSxSF0a4SpEyJgGkwBgbDGDwNAk+J1IGJkRAyuH/q7ForftJ93f7u5jjhtmUQj8+v14WyLudTG+H/owmYpMCbiEmKu4mYpLibkEkKuwmZpLC7mDnS2s00IZO01l3MJK11FzNJUTchk3SCdDGTtNZdzCRF3cVMUtTd6yJJX/tvCBy50l3MJEXdxUxS1G5o5rihrTMVV7qLmaSonRxknxzWmcorbaHJXWjrTPWVttBk39AQEbRzg4Szw0Lj5IChg3ZukHJ2WGicHCBo2EFzP2OhQdAgaBA0ggZBg6BB0CBoBA2CBkGDoEHQCBoEDYIGQYOgETQIGg704BWs7/Pt4+b/9un9xQtbkV9jsHPAAhd0fMTiFnRsxOL2pTA+5hH+fAstZGttocVsrS301MFYawsdtX7WWtBxcYha0HFRiFrQcTGIWtBxEcwedRez5xI0CNqKeT5B+7A9p6BxclhnzytoH67nFjQIGgTt3Jjw+S00ggZB+3HrPQgaBI2gQdDuRu9D0CBoEDSCBkGDoEHQIGgEDYIGQW/PLwSf631YaAQNggZBuxu9B0FjoUHQftx6fkGDoEHQzo4Zn7v7cD2voEHQVstzCtqH7fkEjZPDSnsuQfvwPY+gReA5BC0GMQt6mijELOiYOMT8XXt8fr16DT8b+ZeDC9lCx0QjZgsdsdZCttAxMYnZQpdfbBELunzcIhZ06cAFLGjwpRBBg6BB0CBoEDSCBkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBM3vQl/OpeQ0kuJxPzULj5ABBw15Bu6NJuJ8tNE4OKBG0s4Pq54aFxskBZYJ2dlD53LDQ5J8cVpqq62yhmeNLoZWm4jr/utCiplrMTg7mODmsNBXX+aaFFjVVYr755BA1FWJ2QzPXDW2lqbTOf15oUTNyzP86OUTNqDEvy7LcFad/+J5RQl7lS6G1ZqSY7w5a1IwU890nhxOEUUJebaGtNSM1s1mA1pojxm/zRRU2e/4U3/VEELeIt3bYzStuEUcFLXABb+ELPztIlaSm4tQAAAAASUVORK5CYII=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Manrope:wght@500;600;700&display=swap">
 <style>
 /* Layout: soft pastel wash; sidebar nav (top bar on phones); home = grid of vivid colour tiles, one colour per country; country page opens with a tile-coloured hero holding its numbers, then white floating panels for emails, phones, passports, travellers, history. Single light look by choice. */
 :root{
@@ -316,7 +351,7 @@ label{font-size:var(--fs-sm);font-weight:700;color:var(--muted)}
   --accent:#5b6cff; --accent-soft:#eceeff;
   --red:#ff5d6c; --red-soft:#ffebed; --green:#22c38e; --green-soft:#e2f8f0;
   --shadow:var(--sh-2);
-  --f-body:"Vazirmatn",Tahoma,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --f-body:"Vazirmatn",Tahoma,"Segoe UI",sans-serif; --f-mono:"Manrope","Segoe UI",system-ui,sans-serif; /* emails, phones, codes: tabular digits via .mono */
   --r:var(--r-lg); --cc:var(--accent);
   /* ── Design tokens ──────────────────────────────────────────────
      Radius:  xs 6 · sm 10 · md 14 · lg 20 · xl 28 · pill
@@ -848,6 +883,13 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .rs-pair.orphan{color:var(--ink)}
 .toast .undo{border:0;background:var(--amber);color:var(--nv);font:inherit;font-weight:800;border-radius:var(--r-pill);padding:2px 14px;cursor:pointer}
 .toast .undo:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.vfs-row{margin-top:8px}
+.btn.vfs{text-decoration:none;background:var(--nv);color:#fff;border-color:var(--nv)}
+.btn.vfs:hover{background:var(--nv-2)}
+.appt-row{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px}
+.appt-read{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.appt-read .lbl{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
+.appt-read small{color:var(--muted)}
 /* Country page hero: same flag gradient as its card */
 .hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--g)}
 @supports (background:linear-gradient(in oklab,red,blue)){.hero[style*="--g"]{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.36)),var(--gk)}}
@@ -988,6 +1030,11 @@ const flagGrad = pc => { const c = flagColors(pc); if (!c.length) return ""; if 
 const flagBg = pc => { const g = flagGrad(pc); return g ? ` style="--g:${g};--gk:${g.replace("linear-gradient(", "linear-gradient(in oklab ")}"` : ""; };
 const flagEl = (pc, cls = "") => `<span class="flag ${cls}">${flagSVG(pc)}</span>`;
 const pName = pc => (CATALOG.find(c => c[0] === pc) || [pc, pc])[1];
+// VFS Global UAE login page per destination. If a country books somewhere else, put its full link in VFS_URL.
+const VFS_ISO3 = {GR:"grc",IT:"ita",FR:"fra",CZ:"cze",FI:"fin",ES:"esp",DE:"deu",NL:"nld",BE:"bel",AT:"aut",CH:"che",PT:"prt",PL:"pol",HU:"hun",SE:"swe",DK:"dnk",NO:"nor",MT:"mlt",CY:"cyp",HR:"hrv",SI:"svn",SK:"svk",LU:"lux",LV:"lva",LT:"ltu",EE:"est",IS:"isl",BG:"bgr",RO:"rou",UK:"gbr",CA:"can",AU:"aus"};
+const VFS_URL = {};
+const vfsUrl = pc => VFS_URL[pc] || (VFS_ISO3[pc] ? `https://visa.vfsglobal.com/are/en/${VFS_ISO3[pc]}/login` : "https://www.vfsglobal.com/");
+const vfsBtn = pc => `<a class="btn sm vfs" href="${esc(vfsUrl(pc))}" target="_blank" rel="noopener">باز کردن VFS ${esc(pName(pc))} <span aria-hidden="true">↗</span></a>`;
 function normPhone(raw){ let d = String(raw).replace(/[^\d+]/g, ""); if (d.startsWith("00")) d = "+" + d.slice(2); if (/^05\d{8}$/.test(d)) d = "+971" + d.slice(1); else if (/^9715\d{8}$/.test(d)) d = "+" + d; else if (/^5\d{8}$/.test(d)) d = "+971" + d; return d; }
 const localPhone = p => { const m = /^\+971(\d{9})$/.exec(p || ""); return m ? "0" + m[1] : (p || ""); };
 const prettyPhone = p => { const l = localPhone(p); const m = /^(0\d{2})(\d{3})(\d{4})$/.exec(l); return m ? `${m[1]} ${m[2]} ${m[3]}` : l; };
@@ -1270,7 +1317,7 @@ function stepCard(pc, s, i, total){
     ${ex && s.st === "check" ? `<div class="sc-warn">${s.a?.lastVerified ? `آخرین ورود ${rel(s.a.lastVerified)}` : "آخرین ورود ثبت نشده"} · ممکن است پاک شده باشد</div>` : ""}
     <div class="task-grid">
       <div><div class="task-lbl">مسافران</div><div class="plist2">${s.add.map(prow2).join("")}</div></div>
-      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? (s.sim ? credLine("شماره", prettyPhone(s.sim.number), localPhone(s.sim.number)) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div></div>
+      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? (s.sim ? credLine("شماره", prettyPhone(s.sim.number), localPhone(s.sim.number)) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div></div>
     </div>
     <div class="task-acts">${ex || ok ? `<div class="res-q">${ex ? "بعد از ورود به سایت VFS، چه شد؟" : "بعد از تلاش برای ساخت اکانت در سایت VFS، چه شد؟"}</div><div class="res-grid">${acts}</div>` : acts}</div></div>`;
 }
@@ -1346,7 +1393,7 @@ function renderWl(){
   const ppl = S.people.filter(keep);
   const tot = s => S.people.filter(p => p.status === s).length;
   let h = `<div class="page-h"><div><h1>ویت‌لیست و وقت‌ها</h1></div>
-</div>
+  <button class="btn primary" type="button" data-act="readappt">خواندن نامه تأیید وقت</button></div>
     <div class="wl-sum"><div><b>${faN(tot("waitlist"))}</b><span>در ویت‌لیست</span></div><div><b>${faN(tot("booked"))}</b><span>وقت گرفته</span></div><div><b>${faN(new Set(ppl.map(p => p.accountId)).size)}</b><span>اکانت درگیر</span></div></div>`;
   const countries = portalsList().filter(c => ppl.some(p => p.portal === c.code));
   if (!countries.length) return h + `<section class="sec"><div class="empty">هنوز مسافری در Waitlist نیست.</div></section>`;
@@ -1360,7 +1407,7 @@ function renderWl(){
       const waiting = list.filter(p => p.status === "waitlist");
       h += `<div class="wl-acc">
         <div class="wl-acc-h"><div class="sc-cred" style="flex:1">${credLine("ایمیل", e?.address || aid)}${m ? credLine("شماره", prettyPhone(m.number), localPhone(m.number)) : ""}</div>
-          <div class="wl-acc-side">${capPill(occupants(aid).length)}</div></div>
+          <div class="wl-acc-side">${capPill(occupants(aid).length)}${vfsBtn(c.code)}</div></div>
         <div class="wl-list">${list.map(p => {
           const pp = p.passportId ? S.passports.find(x => x.id === p.passportId) : null;
           const booked = p.status === "booked";
@@ -1373,6 +1420,59 @@ function renderWl(){
     h += `</div></section>`;
   }
   return h;
+}
+// ---------- read a VFS appointment confirmation and book the matching travellers ----------
+const normName = v => String(v || "").toUpperCase().replace(/[^A-Z؀-ۿ ]+/g, " ").split(/\s+/).filter(Boolean);
+function matchPerson(app, pool){
+  if (app.passportNo){ const hit = pool.find(p => { const pp = p.passportId && S.passports.find(x => x.id === p.passportId); return pp?.passportNo && pp.passportNo.toUpperCase() === app.passportNo; }); if (hit) return hit; }
+  const a = normName(app.name); if (!a.length) return null;
+  let best = null, bestScore = 0;
+  for (const p of pool){ const pp = p.passportId && S.passports.find(x => x.id === p.passportId);
+    for (const cand of [p.name, pp?.name, pp ? `${pp.firstName || ""} ${pp.lastName || ""}` : ""]){
+      const b = normName(cand); if (!b.length) continue;
+      const score = a.filter(t => b.includes(t)).length / Math.max(a.length, b.length);
+      if (score > bestScore){ bestScore = score; best = p; } } }
+  return bestScore >= .5 ? best : null;
+}
+function apptReadSheet(){
+  if (!SERVER_AI){ toast("خواندن خودکار فعال نیست؛ کلید Claude API را بالای فایل index.php بگذارید"); return; }
+  openSheet("خواندن نامه تأیید وقت",
+    `<p class="hint" style="margin:0">PDF یا اسکرین‌شات نامه تأیید VFS را انتخاب کنید، یا متن ایمیل تأیید را اینجا paste کنید. تاریخ، ساعت و مسافرها خودکار پیدا می‌شوند و قبل از ثبت نشانتان می‌دهیم.</p>
+    <div class="field"><label for="apptFile">فایل نامه (PDF یا عکس)</label><input type="file" id="apptFile" accept="image/jpeg,image/png,image/webp,application/pdf"></div>
+    ${F.area("apptText", "یا متن ایمیل تأیید", "", {ltr:true, ph:"Your appointment has been confirmed…"})}`,
+    async () => {
+      const f = $("#apptFile").files[0], text = $("#apptText").value.trim();
+      if (!f && !text){ toast("یک فایل انتخاب کنید یا متن ایمیل را paste کنید"); return false; }
+      $("#sheetSave").textContent = "در حال خواندن…";
+      try {
+        const body = f ? {fileId:(await assets.upload(f)).id} : {text};
+        const r = await API("readappt", body); apptConfirmSheet(r.appt);
+      } catch (e) { toast(e?.message || "خوانده نشد؛ دوباره امتحان کنید"); $("#sheetSave").textContent = "بخوان"; }
+      return false; }, "", "بخوان");
+}
+function apptConfirmSheet(ap){
+  const byCountry = S.people.filter(p => p.status === "waitlist" && (!ap.country || p.portal === ap.country));
+  const pool = byCountry.length ? byCountry : S.people.filter(p => p.status === "waitlist");
+  const apps = ap.applicants.length ? ap.applicants : [{name:"", passportNo:""}];
+  const used = new Set();
+  const rows = apps.map((a, i) => { const m = matchPerson(a, pool.filter(p => !used.has(p.id))); if (m) used.add(m.id);
+    const opts = [["", "— ثبت نشود —"], ...pool.map(p => [p.id, `${p.name} · ${pName(p.portal)} · ${S.emails.get(p.emailId)?.address || ""}`])];
+    return `<div class="appt-row"><div class="appt-read"><span class="lbl">در نامه</span><b class="mono">${esc(a.name || "—")}</b>${a.passportNo ? `<small class="mono">${esc(a.passportNo)}</small>` : ""}${m ? `<span class="pill ok">پیدا شد</span>` : `<span class="pill sun">دستی انتخاب کنید</span>`}</div>
+      ${F.sel("who" + i, "مسافر در میز سفارت", opts, m?.id || "")}</div>`; }).join("");
+  openSheet("تأیید وقت از روی نامه",
+    `<div class="sc-cred"><div><span class="lbl">کشور</span>${ap.country && FLAGS[ap.country] ? flagEl(ap.country, "sm") : ""}<b style="font-size:13px">${esc(ap.country ? pName(ap.country) : "پیدا نشد")}</b></div>${ap.center ? `<div><span class="lbl">مرکز</span><span>${esc(ap.center)}</span></div>` : ""}${ap.reference ? credLine("رزرو", ap.reference) : ""}</div>
+    <div class="two">${F.date("apptDate", "تاریخ وقت سفارت", ap.date)}<div class="field"><label for="apptTime">ساعت</label><input type="time" id="apptTime" name="apptTime" dir="ltr" value="${esc(ap.time)}"></div></div>
+    ${rows}`,
+    async () => { const d = formData(); if (!d.apptDate){ toast("تاریخ وقت را وارد کنید"); return false; }
+      const ids = [...new Set(apps.map((_, i) => d["who" + i]).filter(Boolean))], ps = ids.map(id => S.people.find(p => p.id === id)).filter(Boolean);
+      if (!ps.length){ toast("حداقل یک مسافر انتخاب کنید"); return false; }
+      const note = [ap.reference && "رزرو " + ap.reference, ap.center].filter(Boolean).join(" · ");
+      await undoable(async () => {
+        for (const p of ps) if (!await write(() => db.doc("people/" + p.id).update({status:"booked", apptDate:d.apptDate, apptTime:d.apptTime || "", note:[p.note, note].filter(Boolean).join(" · ")}))) return;
+        for (const pc of new Set(ps.map(p => p.portal))){ const g = ps.filter(p => p.portal === pc);
+          await addLog("booked", pc, {emailId:g[0].emailId, simId:S.accounts.get(g[0].accountId)?.simId || "", note:`${g.map(p => p.name).join("، ")} · ${d.apptDate}${d.apptTime ? " " + d.apptTime : ""}`}); }
+        toast(`وقت ${faN(ps.length)} نفر ثبت شد`); });
+      return true; }, "", "ثبت وقت");
 }
 function bookSheet(ids){
   const ps = ids.map(i => S.people.find(p => p.id === i)).filter(Boolean); if (!ps.length) return;
@@ -1978,6 +2078,7 @@ document.addEventListener("click", e => {
   if (a === "open"){ country = id; lsSet("country3", id); render(); window.scrollTo({top:0}); return; }
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
+  if (a === "readappt") return apptReadSheet();
   if (a === "pcountry"){ peopleCountry = id; render(); return; }
   if (a === "wlshow"){ wlShow = id; render(); return; }
   if (a === "book"){ if (canWrite) bookSheet([id]); return; }
