@@ -332,6 +332,8 @@ label{font-size:var(--fs-sm);font-weight:700;color:var(--muted)}
   --sh-pop:0 30px 80px rgba(31,42,77,.28);
   --ease:cubic-bezier(.2,.7,.2,1); --dur:.16s;
   --red-ink:#d8394a; --green-ink:#12936a; --amber-ink:#9a6400; --line-strong:#cdd3f3;
+  /* Navy: data surfaces — table headers, account (email + phone) rows */
+  --nv:#0f2547; --nv-2:#1c3d70; --nv-ink:#ffffff; --nv-muted:rgba(255,255,255,.62); --nv-chip:rgba(255,255,255,.14);
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -824,6 +826,32 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .ibtn i{display:grid;place-items:center;width:26px;height:26px;border-radius:var(--r-xs);margin-inline-start:-6px}
 .ibtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .i-sim i{background:var(--teal-soft);color:#1f86a8}.i-mail i{background:var(--amber-soft);color:var(--amber-ink)}.i-bulk i{background:rgba(255,255,255,.22);color:#fff}
+/* ── Navy data surfaces ─────────────────────────────────────────────
+   Table headers are navy with the country flag draped behind the title as
+   rippled velvet (SVG displacement + fold shading); account rows are navy. */
+.qsec,.rs-card{--cc:var(--nv-2)}
+.qhead,.rs-card-h{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(120deg,var(--nv-2),var(--nv) 65%);color:var(--nv-ink)}
+.qhead{padding:22px 22px 24px}
+.rs-card-h{padding:14px 16px}
+.cloth{position:absolute;z-index:-1;inset-block:-6px;right:-2%;width:min(420px,60%);pointer-events:none;opacity:.92;-webkit-mask-image:linear-gradient(to left,#000 35%,transparent 100%);mask-image:linear-gradient(to left,#000 35%,transparent 100%)}
+.cloth svg{width:100%;height:100%;display:block}
+.cloth::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(6,16,38,.38) 0%,rgba(255,255,255,.16) 16%,rgba(6,16,38,.34) 34%,rgba(255,255,255,.12) 52%,rgba(6,16,38,.36) 70%,rgba(255,255,255,.14) 86%,rgba(6,16,38,.3) 100%),radial-gradient(60% 80% at 75% 15%,rgba(255,255,255,.28),transparent 65%),linear-gradient(90deg,rgba(15,37,71,.55),rgba(15,37,71,.15) 70%)}
+.qhead h2,.rs-card-h b{text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.qhead .qn,.rs-card-h > span:not(.flag):not(.cloth){background:var(--nv-chip);backdrop-filter:blur(6px)}
+.sc-cred,.rs-pair{background:var(--nv);color:var(--nv-ink)}
+.sc-cred .lbl,.sc-cred span[style*="--muted"]{color:var(--nv-muted)!important}
+.sc-cred .copy{background:var(--nv-chip);color:var(--nv-ink)}
+.sc-cred .copy:hover{background:rgba(255,255,255,.24)}
+.nofree{color:#ff9aa5;font-weight:700}
+.rs-pair:hover{background:var(--nv-2);box-shadow:none}
+.rs-p i{color:var(--nv-muted)}
+.rs-link{background:var(--nv-chip)}
+.rs-occ{background:var(--nv-chip);color:var(--nv-ink)}
+.rs-pair.orphan{color:var(--ink)}
+/* Country cards: gradient drawn from the country's own flag colours */
+.ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--g);text-shadow:0 1px 2px rgba(0,0,0,.3)}
+@supports (background:linear-gradient(in oklab,red,blue)){.ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--gk)}}
+.ccard.fg .mini,.ccard.fg .ccard-f span{background:rgba(10,20,45,.22);backdrop-filter:blur(4px)}
 </style>
 </head><body>
 
@@ -949,6 +977,10 @@ const FLAGS = {
 const flagSVG = pc => `<svg viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</svg>`;
 const FLAG_Y = {GR:"YMin", UK:"YMin", AU:"YMin"};
 const flagBand = pc => `<span class="flag-band" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="xMid${FLAG_Y[pc] || "YMid"} slice">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</svg></span>`;
+let clothN = 0;
+const flagCloth = pc => { const id = "wv" + (++clothN); return `<span class="cloth" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="none"><defs><filter id="${id}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.11 0.03" numOctaves="1" seed="4"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation=".12"/></filter></defs><g filter="url(#${id})">${(FLAGS[pc] || (() => _r(0,0,30,20,"#dfe4f2")))()}</g></svg></span>`; };
+const flagColors = pc => FLAGS[pc] ? [...new Set((FLAGS[pc]().match(/fill="#[0-9A-Fa-f]{3,6}"/g) || []).map(m => m.slice(6, -1).toUpperCase()))].filter(c => !["#FFF", "#FFFFFF", "#999"].includes(c)).slice(0, 3) : [];
+const flagGrad = pc => { const c = flagColors(pc); if (!c.length) return ""; if (c.length === 1) c.push(`color-mix(in srgb,${c[0]} 70%,#0f2547)`); return `linear-gradient(135deg,${c.map((x, i) => `${x} ${Math.round(i * 100 / (c.length - 1))}%`).join(",")})`; };
 const flagEl = (pc, cls = "") => `<span class="flag ${cls}">${flagSVG(pc)}</span>`;
 const pName = pc => (CATALOG.find(c => c[0] === pc) || [pc, pc])[1];
 function normPhone(raw){ let d = String(raw).replace(/[^\d+]/g, ""); if (d.startsWith("00")) d = "+" + d.slice(2); if (/^05\d{8}$/.test(d)) d = "+971" + d.slice(1); else if (/^9715\d{8}$/.test(d)) d = "+" + d; else if (/^5\d{8}$/.test(d)) d = "+971" + d; return d; }
@@ -1025,7 +1057,8 @@ function renderCountries(){
   let h = `<div class="page-h"><div><h1>کشورها</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="sim">+ شماره</button><button class="btn" type="button" data-act="email">+ ایمیل</button></div></div>`;
   h += `<div class="cgrid">${portalsList().map(p => { const s = countryStats(p.code), wp = S.passports.filter(x => x.portal === p.code && x.status === "waiting").length;
-    return `<button class="ccard" type="button" data-act="open" data-id="${esc(p.code)}" style="--cc:${colorOf(p.code)}">
+    const g = flagGrad(p.code);
+    return `<button class="ccard${g ? " fg" : ""}" type="button" data-act="open" data-id="${esc(p.code)}" style="--cc:${g ? flagColors(p.code)[0] : colorOf(p.code)}${g ? `;--g:${g};--gk:${g.replace("linear-gradient(", "linear-gradient(in oklab ")}` : ""}">
       <div class="ccard-h">${flagEl(p.code)}<div><b>${esc(pName(p.code))}</b><small>VFS ${esc(p.code)}</small></div></div>
       <div class="big"><b>${faN(s.active)}</b><span>اکانت فعال</span></div>
       <div class="minis"><div class="mini"><b>${faN(s.check)}</b><span>چک شود</span></div><div class="mini"><b>${faN(s.free)}</b><span>جای خالی</span></div><div class="mini"><b>${faN(s.people)}</b><span>مسافر</span></div></div>
@@ -1196,7 +1229,7 @@ function planFor(pc){
   lastPlans[pc] = steps;
   return {waiting, steps};
 }
-const credLine = (lbl, val, copyVal) => `<div><span class="lbl">${lbl}</span>${val ? `<span class="mono">${esc(val)}</span>${copyBtn(copyVal || val)}` : `<span style="color:#d8394a;font-weight:700">آزاد نمانده</span>`}</div>`;
+const credLine = (lbl, val, copyVal) => `<div><span class="lbl">${lbl}</span>${val ? `<span class="mono">${esc(val)}</span>${copyBtn(copyVal || val)}` : `<span class="nofree">آزاد نمانده</span>`}</div>`;
 function stepCard(pc, s, i, total){
   const ex = s.kind === "existing", ok = ex || (s.e && s.sim);
   const title = ex ? `وارد این اکانت VFS شوید و ${s.add.length > 1 ? `این ${faN(s.add.length)} نفر` : "این مسافر"} را اضافه کنید`
@@ -1256,7 +1289,7 @@ function renderQueue(){
   if (!withWork.length) return h + `<div class="sec"><div class="empty">پاسپورتی در انتظار ثبت نیست.</div></div>`;
   for (const p of withWork){
     const {waiting, steps} = planFor(p.code);
-    h += `<section class="qsec" style="--cc:${colorOf(p.code)}"><div class="qhead"><h2>${flagEl(p.code, "md")}${esc(pName(p.code))}</h2><span class="qn">${faN(waiting.length)} پاسپورت</span></div>
+    h += `<section class="qsec"><div class="qhead">${flagCloth(p.code)}<h2>${flagEl(p.code, "md")}${esc(pName(p.code))}</h2><span class="qn">${faN(waiting.length)} پاسپورت</span></div>
       ${stageBar(1)}
       <div class="tasks">${steps.map((s, i) => stepCard(p.code, s, i, steps.length)).join("")}</div></section>`;
   }
@@ -1300,7 +1333,7 @@ function renderWl(){
   for (const c of countries){
     const cp = ppl.filter(p => p.portal === c.code);
     const accIds = [...new Set(cp.map(p => p.accountId))];
-    h += `<section class="qsec" style="--cc:${colorOf(c.code)}"><div class="qhead"><h2>${flagEl(c.code, "md")}${esc(pName(c.code))}</h2><span class="qn">${faN(cp.filter(p => p.status === "waitlist").length)} در ویت‌لیست · ${faN(cp.filter(p => p.status === "booked").length)} وقت گرفته</span></div><div class="tasks">`;
+    h += `<section class="qsec"><div class="qhead">${flagCloth(c.code)}<h2>${flagEl(c.code, "md")}${esc(pName(c.code))}</h2><span class="qn">${faN(cp.filter(p => p.status === "waitlist").length)} در ویت‌لیست · ${faN(cp.filter(p => p.status === "booked").length)} وقت گرفته</span></div><div class="tasks">`;
     for (const aid of accIds){
       const a = S.accounts.get(aid), e = S.emails.get(a?.emailId || aid.split("__")[1]), m = a?.simId ? S.sims.get(a.simId) : null;
       const list = cp.filter(p => p.accountId === aid).sort((x, y) => (x.status === "booked") - (y.status === "booked") || (x.apptDate || "").localeCompare(y.apptDate || ""));
@@ -1351,7 +1384,7 @@ function renderRes(){
         <span class="rs-p mono">${m ? esc(prettyPhone(m.number)) : `<i>بدون شماره</i>`}</span>
         <span class="rs-occ ${n >= CAP ? "full" : ""}">${faN(n)}/${faN(CAP)}</span></button>`; }).join("")
       + orphan.map(m => `<div class="rs-pair orphan"><span class="rs-dot st-reg"></span><span class="rs-e">شماره تکراری، بدون اکانت</span><span class="rs-link">+</span><span class="rs-p mono">${esc(prettyPhone(m.number))}</span><span></span></div>`).join("");
-    return `<div class="rs-card" style="--cc:${colorOf(p.code)}"><div class="rs-card-h">${flagEl(p.code, "md")}<b>${esc(pName(p.code))}</b><span>${faN(accs.length)} اکانت</span></div><div class="rs-card-b">${rows}</div></div>`;
+    return `<div class="rs-card"><div class="rs-card-h">${flagCloth(p.code)}${flagEl(p.code, "md")}<b>${esc(pName(p.code))}</b><span>${faN(accs.length)} اکانت</span></div><div class="rs-card-b">${rows}</div></div>`;
   }).join("");
   const cnt = (n, extra) => `<span class="hcount">${faN(n)}</span>${extra ? `<span class="hcount2">${extra}</span>` : ""}`;
   const chip = (pc, st, txt) => `<span class="rs-chip st-${st}" style="--cc:${colorOf(pc)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
