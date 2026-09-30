@@ -373,7 +373,8 @@ label{font-size:var(--fs-sm);font-weight:700;color:var(--muted)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{direction:rtl;height:100%}
-body{margin:0;color:var(--ink);font-family:var(--f-body);font-size:var(--fs-base);line-height:1.7;background:var(--bg);background-image:radial-gradient(900px 500px at 100% 0%,#e3f4ff 0%,transparent 60%),radial-gradient(800px 600px at 0% 100%,#f7e8ff 0%,transparent 55%);background-attachment:fixed}
+body{margin:0;color:var(--ink);font-family:var(--f-body);font-size:var(--fs-base);line-height:1.7;background:var(--bg)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(900px 500px at 100% 0%,#e3f4ff 0%,transparent 60%),radial-gradient(800px 600px at 0% 100%,#f7e8ff 0%,transparent 55%)}
 button,input,select,textarea{font:inherit;color:inherit}
 .mono{font-family:var(--f-mono);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
 /* shell */
@@ -870,7 +871,7 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .qhead{padding:18px 22px}
 .rs-card-h{padding:12px 16px}
 .qhead h2,.rs-card-h b{text-shadow:0 1px 3px rgba(0,0,0,.35)}
-.qhead .qn,.rs-card-h > span:not(.flag){background:var(--nv-chip);backdrop-filter:blur(6px)}
+.qhead .qn,.rs-card-h > span:not(.flag){background:var(--nv-chip)}
 .sc-cred,.rs-pair{background:var(--nv);color:var(--nv-ink)}
 .sc-cred .lbl,.sc-cred span[style*="--muted"]{color:var(--nv-muted)!important}
 .sc-cred .copy{background:var(--nv-chip);color:var(--nv-ink)}
@@ -896,7 +897,7 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 /* Country cards: gradient drawn from the country's own flag colours */
 .ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--g);text-shadow:0 1px 2px rgba(0,0,0,.3)}
 @supports (background:linear-gradient(in oklab,red,blue)){.ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--gk)}}
-.ccard.fg .mini,.ccard.fg .ccard-f span{background:rgba(10,20,45,.22);backdrop-filter:blur(4px)}
+.ccard.fg .mini,.ccard.fg .ccard-f span{background:rgba(10,20,45,.24)}
 </style>
 </head><body>
 
@@ -1103,6 +1104,7 @@ function countryStats(pc){
 }
 
 // ---------- rendering ----------
+let lastView = "";
 function render(){
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   const live = S.people.filter(p => p.status === "waitlist" || p.status === "booked").length;
@@ -1111,11 +1113,11 @@ function render(){
   $("#nWl").textContent = wlN ? faN(wlN) : "";
   const waitingP = S.passports.filter(x => x.status === "waiting").length;
   $("#nPass").textContent = waitingP ? faN(waitingP) : "";
-  if (db && Object.values(loaded).some(v => !v)) { $("#view").innerHTML = `<div class="empty">در حال بارگذاری…</div>`; return; }
+  if (db && Object.values(loaded).some(v => !v)) { $("#view").innerHTML = `<div class="empty">در حال بارگذاری…</div>`; lastView = ""; return; }
   let html;
   if (tab === "countries") html = country && S.portals.has(country) ? renderCountry(country) : renderCountries();
   else html = ({pass:renderQueue, wl:renderWl, res:renderRes, people:renderPeople}[tab] || renderQueue)();
-  $("#view").innerHTML = html;
+  if (html !== lastView) { $("#view").innerHTML = html; lastView = html; }
 }
 
 const legendHTML = () => `<div class="legend"><span><span class="st st-active">${ST_LABEL.active}</span> ورود تأییدشده در ${faN(FRESH)} روز اخیر</span><span><span class="st st-check">${ST_LABEL.check}</span> اکانت داشت ولی بیش از ${faN(FRESH)} روز واردش نشده‌اید</span><span><span class="st st-unused">${ST_LABEL.unused}</span> روی این کشور سابقه‌ای ثبت نشده</span><span><span class="st st-none">${ST_LABEL.none}</span> VFS گفت اکانت نیست</span></div>`;
