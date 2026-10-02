@@ -247,33 +247,29 @@ function tg_acc_line($all, $a) {
 }
 function tg_view($key) {
   $all = tg_all(); $back = [[['text' => '← منو', 'callback_data' => 'm']]];
-  if ($key === 'm') return ["<b>میز سفارت</b> 👇", [[['text' => '🌍 کشورها', 'callback_data' => 'c'], ['text' => '🟢 جای خالی', 'callback_data' => 'f']], [['text' => '📧 ایمیل‌ها', 'callback_data' => 'e'], ['text' => '📱 شماره‌ها', 'callback_data' => 's']]]];
-  if ($key === 'c' || $key === 'f') {
-    $rows = []; $lines = [];
-    foreach (tg_portals($all) as $pc) {
-      $free = 0; $best = null; $nAcc = 0; $nPpl = 0;
-      foreach (tg_live($all) as $a) if ($a['portal'] === $pc) { $nAcc++; $o = tg_occ($all, $a['id']); $nPpl += $o;
-        if (tg_st($a) === 'active') { $f = TG_CAP - $o; $free += max(0, $f); if ($f > 0 && (!$best || $f < $best[1])) $best = [$a, $f]; } }
-      $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc) . ' · ' . tg_fa($free), 'callback_data' => 'c:' . $pc];
-      if ($key === 'f') {
-        // one block per country: name, then the numbers, then the account to fill next on its own line (keeps LTR emails from wrapping)
-        $l = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>' . "\n";
-        if (!$nAcc) $l .= '— هنوز اکانتی ساخته نشده';
-        else { $l .= tg_fa($nAcc) . ' اکانت · ' . tg_fa($nPpl) . ' مسافر · ' . ($free ? tg_fa($free) . ' جای خالی' : 'همه پر');
-          if ($best) $l .= "\n↳ <code>" . tg_h($all['emails'][$best[0]['emailId']]['address']) . '</code>'; }
-        $lines[] = $l;
-      }
-    }
-    $kb = array_chunk($rows, 2); $kb[] = $back[0];
-    return [$key === 'f' ? "🟢 <b>جای خالی اکانت‌های فعال</b>\n<i>↳ اکانت پیشنهادی برای مسافر بعدی</i>\n\n" . implode("\n\n", $lines) : '🌍 <b>کدام کشور؟</b> (عدد = جای خالی)', $kb];
+  // Simple menu: countries → that country's accounts (email · phone · free places) → the travellers on one account
+  if ($key === 'm' || $key === 'c' || $key === 'f') {
+    $rows = []; foreach (tg_portals($all) as $pc) $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc), 'callback_data' => 'c:' . $pc];
+    return ['🌍 <b>کدام کشور؟</b>', array_chunk($rows, 3)];
   }
   if (preg_match('/^c:([A-Z]{2})$/', $key, $m)) {
-    $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $free = 0; $out = [];
-    $ppl = 0; foreach ($accs as $a) { $out[] = tg_acc_line($all, $a); $ppl += tg_occ($all, $a['id']); if (tg_st($a) === 'active') $free += max(0, TG_CAP - tg_occ($all, $a['id'])); }
-    $used = array_column($accs, 'emailId'); $fe = 0; foreach ($all['emails'] ?? [] as $e) if (($e['status'] ?? '') !== 'inactive' && !in_array($e['id'], $used, true) && tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null) !== 'none') $fe++;
-    $fs = 0; foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $busy = false; foreach ($accs as $a) if (($a['simId'] ?? '') === $sm['id']) $busy = true; if (!$busy && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') !== 'registered') $fs++; }
-    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . "</b>\n" . ($accs ? tg_fa(count($accs)) . ' اکانت · ' . tg_fa($ppl) . ' مسافر · ' . ($free ? tg_fa($free) . ' جای خالی' : 'همه پر') : 'هنوز اکانتی ساخته نشده') . "\n━━━━━━━━━━\n" . ($out ? implode("\n\n", $out) : '—') . "\n━━━━━━━━━━\nآزاد برای اکانت جدید: " . tg_fa($fe) . ' ایمیل · ' . tg_fa($fs) . ' شماره';
-    return [$t, [[['text' => '← کشورها', 'callback_data' => 'c'], ['text' => 'منو', 'callback_data' => 'm']]]];
+    $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $kb = [];
+    foreach ($accs as $a) {
+      $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $ph = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : '—';
+      $free = max(0, TG_CAP - tg_occ($all, $a['id']));
+      $kb[] = [['text' => explode('@', $e)[0] . ' · ' . str_replace(' ', '', $ph) . ' · ' . ($free ? tg_fa($free) . ' خالی' : 'پر'), 'callback_data' => 'a:' . $a['id']]];
+    }
+    $kb[] = [['text' => '← کشورها', 'callback_data' => 'm']];
+    return [tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>' . "\n" . ($accs ? 'روی هر اکانت بزنید تا مسافرهایش را ببینید' : 'هنوز اکانتی ساخته نشده'), $kb];
+  }
+  if (preg_match('/^a:([A-Za-z0-9_\-.~:@+]+)$/', $key, $m)) {
+    $a = $all['accounts'][$m[1]] ?? null; if (!$a) return ['این اکانت دیگر نیست', [[['text' => '← کشورها', 'callback_data' => 'm']]]];
+    $pc = $a['portal']; $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $ph = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره';
+    $ppl = array_values(array_filter($all['people'] ?? [], fn($p) => ($p['accountId'] ?? '') === $a['id'] && !in_array($p['status'] ?? '', ['removed', 'done'], true)));
+    $free = max(0, TG_CAP - count($ppl)); $lines = [];
+    foreach ($ppl as $i => $p) $lines[] = tg_fa($i + 1) . '. <b>' . tg_h($p['name'] ?? '') . '</b> — ' . (($p['status'] ?? '') === 'booked' ? '📅 ' . tg_h(trim(($p['apptDate'] ?? '') . ' ' . ($p['apptTime'] ?? ''))) : 'Waitlist');
+    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . "</b>\n📧 <code>" . tg_h($e) . "</code>\n📱 <code>" . tg_h($ph) . "</code>\n" . ($free ? '🟢 ' . tg_fa($free) . ' جای خالی از ' . tg_fa(TG_CAP) : '🔴 پر') . "\n━━━━━━━━━━\n" . ($lines ? implode("\n", $lines) : 'هنوز مسافری روی این اکانت نیست');
+    return [$t, [[['text' => '← اکانت‌های ' . tg_cname($pc), 'callback_data' => 'c:' . $pc], ['text' => 'کشورها', 'callback_data' => 'm']]]];
   }
   if ($key === 'e' || $key === 's') {
     $col = $key === 'e' ? 'emails' : 'sims'; $rows = [];
@@ -318,7 +314,7 @@ function tg_setup() {
   if ($CONFIG['telegram_token'] === '') { echo '<p dir="rtl">اول telegram_token را بالای فایل بگذارید.</p>'; exit; }
   $url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . strtok($_SERVER['REQUEST_URI'], '?') . '?tg=1';
   $r = tg_api('setWebhook', ['url' => $url, 'secret_token' => tg_secret(), 'allowed_updates' => ['message', 'callback_query']]);
-  tg_api('setMyCommands', ['commands' => [['command' => 'menu', 'description' => 'منوی میز سفارت']]]);
+  tg_api('setMyCommands', ['commands' => [['command' => 'menu', 'description' => 'کشورها و اکانت‌ها']]]);
   echo '<p dir="rtl" style="font:16px Tahoma">' . (!empty($r['ok']) ? '✅ ربات وصل شد. در گروه /menu بزنید.' : '❌ وصل نشد: ' . tg_h($r['description'] ?? 'اتصال به تلگرام برقرار نشد')) . '</p>'; exit;
 }
 // one-line notification to the team chat when something worth knowing changes
