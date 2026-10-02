@@ -1906,15 +1906,8 @@ function openAccount(id){
     <div class="up-lbl" style="justify-content:space-between"><span>مسافران این اکانت</span>${capPill(occ.length)}</div>
     ${occ.length ? `<div class="plist">${occ.map(p => `<div class="prow"><span><b>${esc(p.name)}</b> <span class="pill ${p.status === "booked" ? "ok" : "sun"}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? ` <span class="mono" style="font-size:12px">${esc(p.apptDate)}</span>` : ""}</span><span class="p3-act"><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></span></div>`).join("")}</div>` : `<div class="empty" style="padding:10px">هنوز مسافری روی این اکانت نیست.</div>`}
     ${occ.length < CAP && (st === "active" || st === "check") ? `<button class="btn primary" type="button" data-act="addpeople" data-id="${esc(id)}" style="align-self:flex-start">+ افزودن مسافر</button>` : ""}
-    <details class="more"><summary>ویرایش اطلاعات اکانت</summary>
-      ${F.sel("simId","شماره ثبت‌شده با این اکانت",[["","—"], ...phoneOptions(pc, a?.simId).map(([v,t]) => [v,t])],a?.simId || "")}
-      <div class="two">${F.sel("status","وضعیت",[["active","اکانت دارد"],["none","پاک شده / ندارد"],["unknown","استفاده نشده"]],a?.status && a.status !== "unknown" ? a.status : "unknown")}${F.date("lastVerified","آخرین ورود",a?.lastVerified || "")}</div>
-      ${F.area("note","یادداشت",a?.note || "")}
-    </details>`,
-    async () => { const d = formData();
-      const ok = await saveAccount(pc, em, {status:d.status, lastVerified:d.lastVerified, simId:d.simId, note:d.note.trim()});
-      if (ok && d.simId && d.status === "active") await setReg(pc, d.simId, "registered", em);
-      if (ok) { await addLog("edit", pc, {emailId:em, simId:d.simId}); toast("ذخیره شد"); } return ok; },
+    `,
+    null,
     `<button class="btn sm ghost-red" type="button" data-act="accdel" data-id="${esc(id)}">حذف اکانت</button>`);
 }
 function addPeople(id, pre = []){
