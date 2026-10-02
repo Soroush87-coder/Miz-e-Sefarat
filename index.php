@@ -726,7 +726,7 @@ tbody tr:hover td{background:var(--soft)}
 .pcard .pb small{color:var(--muted);font-size:var(--fs-xs);overflow-wrap:anywhere}
 .pcard .pick{position:absolute;top:10px;inset-inline-start:10px;width:22px;height:22px;accent-color:var(--accent)}
 .pcard .pact{display:flex;gap:8px;padding:0 12px 12px;flex-wrap:wrap}
-.bulkbar{position:sticky;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:12px;box-shadow:var(--sh-2)}
+.bulkbar{position:sticky;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--toast);color:#fff;border:1px solid var(--toast-line);border-radius:var(--r-lg);padding:10px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:12px;box-shadow:var(--sh-2)}
 .drop{border:2px dashed var(--line-strong);border-radius:var(--r-lg);padding:20px;text-align:center;color:var(--muted);background:var(--soft)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .flist{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-xs);max-height:220px;overflow:auto}
@@ -740,7 +740,7 @@ tbody tr:hover td{background:var(--soft)}
 /* upload sheet */
 .up-step{display:flex;flex-direction:column;gap:10px}
 .up-lbl{display:flex;align-items:center;gap:8px;font-weight:800;font-size:var(--fs-sm)}
-.up-lbl i{width:24px;height:24px;border-radius:var(--r-xs);background:var(--ink);color:#fff;display:grid;place-items:center;font-style:normal;font-size:var(--fs-xs)}
+.up-lbl i{width:24px;height:24px;border-radius:var(--r-xs);background:var(--toast);color:#fff;display:grid;place-items:center;font-style:normal;font-size:var(--fs-xs)}
 .cchips{display:flex;gap:8px;flex-wrap:wrap}
 .cchip{display:inline-flex;align-items:center;gap:7px;border:2px solid transparent;background:color-mix(in srgb,var(--cc) 12%,var(--surface));color:color-mix(in srgb,var(--cc) 75%,#000);border-radius:var(--r-md);padding:6px 14px;font-weight:800;cursor:pointer}
 .cchip.on{background:var(--cc);color:#fff;box-shadow:0 6px 14px color-mix(in srgb,var(--cc) 35%,transparent)}
@@ -829,7 +829,7 @@ tbody tr:hover td{background:var(--soft)}
 .sw input:checked{background:var(--accent)}
 .sw input:checked::after{right:21px}
 .rv{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;border:1.5px solid var(--line);border-radius:var(--r-lg);padding:12px;background:var(--surface)}
-.rv.miss{border-color:#f5c9cf;background:var(--surface)afa}
+.rv.miss{border-color:var(--red-line);background:var(--red-soft)}
 .rv-img{border-radius:var(--r-md);overflow:hidden;background:var(--accent-soft);display:grid;place-items:center;aspect-ratio:4/3;color:var(--accent);font-weight:800;align-self:start}
 .rv-img img{width:100%;height:100%;object-fit:cover}
 .rv-f{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -839,7 +839,7 @@ tbody tr:hover td{background:var(--soft)}
 .rv-g label{display:flex;flex-direction:column;gap:2px;font-size:var(--fs-2xs);color:var(--muted);font-weight:700;min-width:0}
 .rv-g input{border:1px solid var(--line);background:var(--soft);border-radius:var(--r-sm);padding:6px 10px;min-height:38px;width:100%;font-size:var(--fs-sm);min-width:0}
 .rv-g input:focus{background:var(--surface);border-color:var(--accent);outline:none}
-.rv-g input.empty{border-color:#f0a3ad;background:var(--surface)6f7}
+.rv-g input.empty{border-color:var(--red-line);background:var(--red-soft)}
 @media (max-width:520px){.rv{grid-template-columns:1fr}.rv-img{aspect-ratio:16/9}}
 .flag{display:inline-block;width:48px;height:32px;border-radius:var(--r-xs);overflow:hidden;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.14),0 3px 8px rgba(0,0,0,.18);background:var(--surface)}
 .flag svg{width:100%;height:100%;display:block}
@@ -864,25 +864,25 @@ details.more[open] summary{margin-bottom:8px}
 .capx.full{background:var(--amber-soft);color:var(--amber-ink)}
 .dz-scrim{position:fixed;inset:0;z-index:40;background:rgba(120,10,20,.35);backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px}
 .dz{width:min(440px,100%);background:var(--surface);border-radius:var(--r-xl);padding:24px;box-shadow:0 30px 80px rgba(120,10,20,.35);border-top:8px solid var(--red-ink);display:flex;flex-direction:column;gap:12px;text-align:center}
-.dz-ic{width:56px;height:56px;border-radius:50%;background:#ffe3e6;color:var(--red-ink);font-size:var(--fs-2xl);font-weight:800;display:grid;place-items:center;margin:0 auto}
-.dz h3{margin:0;font-size:var(--fs-lg);font-weight:800;color:#b3122a}
+.dz-ic{width:56px;height:56px;border-radius:50%;background:var(--red-soft);color:var(--red-ink);font-size:var(--fs-2xl);font-weight:800;display:grid;place-items:center;margin:0 auto}
+.dz h3{margin:0;font-size:var(--fs-lg);font-weight:800;color:var(--red-ink)}
 .dz-body{font-size:var(--fs-sm);color:var(--ink);text-align:right;display:flex;flex-direction:column;gap:8px}
-.dz-body .dz-what{background:var(--surface)1f2;border:1px solid #ffd0d6;border-radius:var(--r-md);padding:10px 12px;font-weight:800;direction:ltr;text-align:center;font-family:var(--f-mono)}
-.dz-body ul{margin:0;padding-inline-start:18px;color:#8a1020}
+.dz-body .dz-what{background:var(--red-soft);color:var(--ink);border:1px solid var(--red-line);border-radius:var(--r-md);padding:10px 12px;font-weight:800;direction:ltr;text-align:center;font-family:var(--f-mono)}
+.dz-body ul{margin:0;padding-inline-start:18px;color:var(--red-ink)}
 .dz-lbl{font-size:var(--fs-xs);font-weight:700;color:var(--muted);text-align:right}
-.dz-in{border:2px solid #ffc2ca;border-radius:var(--r-md);padding:10px 14px;font:inherit;font-family:var(--f-mono);font-size:var(--fs-md);text-align:center;min-height:48px;outline:none}
+.dz-in{border:2px solid var(--red-line);background:var(--surface);color:var(--ink);border-radius:var(--r-md);padding:10px 14px;font:inherit;font-family:var(--f-mono);font-size:var(--fs-md);text-align:center;min-height:48px;outline:none}
 .dz-in:focus{border-color:var(--red-ink)}
 .dz-acts{display:flex;gap:8px;justify-content:center;margin-top:4px}
 .dz-go{background:var(--red-ink);border-color:var(--red-ink);color:#fff;min-width:150px}
-.dz-go[disabled]{background:#f3b3bb;border-color:#f3b3bb;opacity:1}
-.btn.del-hard{color:var(--red-ink);border-color:#ffc2ca}
+.dz-go[disabled]{background:var(--red-line);border-color:var(--red-line);opacity:1}
+.btn.del-hard{color:var(--red-ink);border-color:var(--red-line)}
 .swap-list{display:flex;flex-direction:column;gap:8px}
 .swap-acc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--soft);border-radius:var(--r-md);padding:8px 12px}
 .swap-acc .mono{font-size:var(--fs-sm);direction:ltr}.swap-acc small,.swap-opt small{color:var(--muted);font-size:var(--fs-xs);margin-inline-start:auto}
 .swap-opt{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:var(--r-md);padding:10px 12px;cursor:pointer;background:var(--surface)}
 .swap-opt:has(input:checked){border-color:var(--accent);background:#eef0ff}
 .swap-opt .mono{font-size:var(--fs-base);font-weight:700;direction:ltr}
-.swap-note{margin-top:14px;background:var(--surface)6e0;color:var(--amber-ink);border-radius:var(--r-md);padding:10px 12px;font-size:var(--fs-sm);font-weight:600}
+.swap-note{margin-top:14px;background:var(--amber-soft);color:var(--amber-ink);border-radius:var(--r-md);padding:10px 12px;font-size:var(--fs-sm);font-weight:600}
 .fchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .fchip{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:6px 12px;font-weight:800;cursor:pointer;color:var(--ink)}
 .fchip b{background:var(--soft);border-radius:var(--r-pill);padding:0 8px;font-size:var(--fs-xs);color:var(--muted)}
@@ -1130,18 +1130,18 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 @supports (background:linear-gradient(in oklab,red,blue)){.ccard.fg{background:linear-gradient(180deg,rgba(8,18,40,.05),rgba(8,18,40,.42)),var(--gk)}}
 .ccard.fg .mini,.ccard.fg .ccard-f span{background:rgba(10,20,45,.24)}
 /* ── Dark mode: follows the device, or the 🌙 button (data-theme on <html>) ── */
-:root{--toast:#1f2a4d;--toast-line:transparent;--wash1:#e3f4ff;--wash2:#f7e8ff;--frame:rgba(255,255,255,.9);--cloud:#fff;--hero-base:#bcd8f7;--hero-sky:linear-gradient(120deg,#7fa8ec 0%,#a9ccf5 40%,#d3ecf6 75%,#e8f5f1 100%);--hero-ink:#0b2447;--hero-sub:#3b5578}
+:root{--red-line:#ffc2ca;--toast:#1f2a4d;--toast-line:transparent;--wash1:#e3f4ff;--wash2:#f7e8ff;--frame:rgba(255,255,255,.9);--cloud:#fff;--hero-base:#bcd8f7;--hero-sky:linear-gradient(120deg,#7fa8ec 0%,#a9ccf5 40%,#d3ecf6 75%,#e8f5f1 100%);--hero-ink:#0b2447;--hero-sub:#3b5578}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
   --bg:#0b1220;--surface:#141c2e;--glass:rgba(20,28,46,.86);--line:#26304a;--line-strong:#34405e;--soft:#1a2338;
-  --ink:#e6ebf7;--muted:#8f9bbd;--accent:#8193ff;--accent-soft:#232a52;--teal-soft:#13303a;--cyan-soft:#12313a;--amber-soft:#3a2d10;
+  --ink:#e6ebf7;--muted:#8f9bbd;--accent:#6b7dff;--accent-soft:#232a52;--teal-soft:#13303a;--cyan-soft:#12313a;--amber-soft:#3a2d10;
   --red-soft:#3d1a21;--green-soft:#10342a;--red-ink:#ff8d98;--green-ink:#4fd6a5;--amber-ink:#f5c35a;--nv:#1c2c4e;--nv-2:#28406f;
-  --toast:#2a3656;--toast-line:#3a4870;--wash1:#13254a;--wash2:#26173d;--frame:rgba(255,255,255,.06);--cloud:#2b4a80;--hero-base:#162c52;--hero-sky:linear-gradient(120deg,#183463 0%,#1d3b6c 45%,#16304a 80%,#132638 100%);--hero-ink:#e6ebf7;--hero-sub:#9fb0d6;--sh-1:0 1px 2px rgba(0,0,0,.3),0 4px 10px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35);
+  --red-line:#6e2a37;--toast:#2a3656;--toast-line:#3a4870;--wash1:#13254a;--wash2:#26173d;--frame:rgba(255,255,255,.06);--cloud:#2b4a80;--hero-base:#162c52;--hero-sky:linear-gradient(120deg,#183463 0%,#1d3b6c 45%,#16304a 80%,#132638 100%);--hero-ink:#e6ebf7;--hero-sub:#9fb0d6;--sh-1:0 1px 2px rgba(0,0,0,.3),0 4px 10px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35);
   --sh-3:0 4px 8px rgba(0,0,0,.35),0 20px 44px rgba(0,0,0,.45);--shadow:var(--sh-2)}}
 :root[data-theme="dark"]{color-scheme:dark;
   --bg:#0b1220;--surface:#141c2e;--glass:rgba(20,28,46,.86);--line:#26304a;--line-strong:#34405e;--soft:#1a2338;
-  --ink:#e6ebf7;--muted:#8f9bbd;--accent:#8193ff;--accent-soft:#232a52;--teal-soft:#13303a;--cyan-soft:#12313a;--amber-soft:#3a2d10;
+  --ink:#e6ebf7;--muted:#8f9bbd;--accent:#6b7dff;--accent-soft:#232a52;--teal-soft:#13303a;--cyan-soft:#12313a;--amber-soft:#3a2d10;
   --red-soft:#3d1a21;--green-soft:#10342a;--red-ink:#ff8d98;--green-ink:#4fd6a5;--amber-ink:#f5c35a;--nv:#1c2c4e;--nv-2:#28406f;
-  --toast:#2a3656;--toast-line:#3a4870;--wash1:#13254a;--wash2:#26173d;--frame:rgba(255,255,255,.06);--cloud:#2b4a80;--hero-base:#162c52;--hero-sky:linear-gradient(120deg,#183463 0%,#1d3b6c 45%,#16304a 80%,#132638 100%);--hero-ink:#e6ebf7;--hero-sub:#9fb0d6;--sh-1:0 1px 2px rgba(0,0,0,.3),0 4px 10px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35);
+  --red-line:#6e2a37;--toast:#2a3656;--toast-line:#3a4870;--wash1:#13254a;--wash2:#26173d;--frame:rgba(255,255,255,.06);--cloud:#2b4a80;--hero-base:#162c52;--hero-sky:linear-gradient(120deg,#183463 0%,#1d3b6c 45%,#16304a 80%,#132638 100%);--hero-ink:#e6ebf7;--hero-sub:#9fb0d6;--sh-1:0 1px 2px rgba(0,0,0,.3),0 4px 10px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35);
   --sh-3:0 4px 8px rgba(0,0,0,.35),0 20px 44px rgba(0,0,0,.45);--shadow:var(--sh-2)}
 .theme-sw{display:flex;align-items:center;gap:10px;width:100%;margin-top:auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-md);padding:10px 12px;font:inherit;font-weight:700;cursor:pointer;text-align:right;transition:border-color var(--dur) var(--ease)}
 .theme-sw:hover{border-color:var(--line-strong)}
@@ -1170,9 +1170,9 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
     <button class="tab" role="tab" data-tab="people" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.3 3.3 0 0 1 0 6.5M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>مسافران<span class="n" id="nPeople"></span></button>
   </nav>
   <button class="theme-sw" type="button" data-act="theme" role="switch" aria-checked="false"><span class="ts-ic" aria-hidden="true">🌙</span><span class="ts-t">حالت شب</span><span class="ts-k" aria-hidden="true"><i></i></span></button>
-  <div class="side-foot"><a href="?api=backup" style="color:var(--accent);font-weight:700">دانلود بک‌آپ</a><a href="?logout=1" style="color:#d8394a;font-weight:700">خروج</a></div>
+  <div class="side-foot"><a href="?api=backup" style="color:var(--accent);font-weight:700">دانلود بک‌آپ</a><a href="?logout=1" style="color:var(--red-ink);font-weight:700">خروج</a></div>
 </aside>
-<div class="main"><div class="mtop"><div class="brand"><i></i><span>میز وقت سفارت</span></div><div class="links"><button class="theme-btn" type="button" data-act="theme" aria-label="حالت شب / روز">🌙</button><a href="?api=backup" style="color:var(--accent)">بک‌آپ</a><a href="?logout=1" style="color:#d8394a">خروج</a></div></div><div class="wrap">
+<div class="main"><div class="mtop"><div class="brand"><i></i><span>میز وقت سفارت</span></div><div class="links"><button class="theme-btn" type="button" data-act="theme" aria-label="حالت شب / روز">🌙</button><a href="?api=backup" style="color:var(--accent)">بک‌آپ</a><a href="?logout=1" style="color:var(--red-ink)">خروج</a></div></div><div class="wrap">
   <div id="banner" class="banner" hidden></div>
   <main id="view"><div class="empty">در حال بارگذاری…</div></main>
 </div></div>
@@ -1518,8 +1518,8 @@ function renderPassports(){
   const q = passQ.trim().toLowerCase();
   const list = S.passports.filter(x => (!passFilter || x.portal === passFilter) && (!passStatus || x.status === passStatus) && (!q || [x.name, x.passportNo, x.nationality, x.fileName].join(" ").toLowerCase().includes(q)))
     .sort((a,b) => (b.at || "").localeCompare(a.at || ""));
-  const chip = (v, t) => `<button class="tab" style="color:var(--navy);background:${passFilter === v ? "var(--cyan)" : "var(--surface)"};border:1px solid var(--line)" type="button" data-act="pfilter" data-id="${esc(v)}">${t}</button>`;
-  const stChip = (v, t) => `<button class="tab" style="color:var(--navy);background:${passStatus === v ? "var(--cyan)" : "var(--surface)"};border:1px solid var(--line)" type="button" data-act="pstatus" data-id="${esc(v)}">${t}</button>`;
+  const chip = (v, t) => `<button class="tab" style="color:${passFilter === v ? "var(--navy)" : "var(--ink)"};background:${passFilter === v ? "var(--cyan)" : "var(--surface)"};border:1px solid var(--line)" type="button" data-act="pfilter" data-id="${esc(v)}">${t}</button>`;
+  const stChip = (v, t) => `<button class="tab" style="color:${passStatus === v ? "var(--navy)" : "var(--ink)"};background:${passStatus === v ? "var(--cyan)" : "var(--surface)"};border:1px solid var(--line)" type="button" data-act="pstatus" data-id="${esc(v)}">${t}</button>`;
   const selCount = [...picked].filter(id => S.passports.some(x => x.id === id && x.status === "waiting")).length;
   let h = `<div class="page-h"><div><h1>پاسپورت‌ها</h1><p>پاسپورت‌هایی که مشتری‌ها فرستاده‌اند. انتخابشان کنید و به یک اکانت اضافه کنید؛ از آن به بعد معلوم است برای هر نفر از کدام ایمیل و شماره استفاده شده. هر پاسپورت ${faN(KEEP_DAYS)} روز بعد از آپلود پاک می‌شود.</p></div>
     <button class="btn primary" type="button" data-act="upload" data-id="${esc(passFilter)}">+ آپلود پاسپورت</button></div>
@@ -2056,7 +2056,7 @@ function confirmHardDelete(kind, code){
   $("#dzBody").innerHTML = `<div class="dz-what">${esc(shown)}</div>
     <div>این ${isSim ? "شماره" : "ایمیل"} برای همیشه از پنل پاک می‌شود و برگشت ندارد.</div>
     ${accs.length ? `<div><b>به این‌ها وصل است:</b><ul>${accs.map(a => `<li>VFS ${esc(pName(a.portal))} · ${esc(isSim ? (S.emails.get(a.emailId)?.address || a.emailId) : (a.simId ? localPhone(S.sims.get(a.simId)?.number) : "بدون شماره"))} · ${faN(occupants(a.id).length)} مسافر</li>`).join("")}</ul></div>` : ""}
-    ${ppl.length ? `<div style="color:#b3122a;font-weight:800">${faN(ppl.length)} مسافر در اکانت‌های این ${isSim ? "شماره" : "ایمیل"} هستند.</div>` : ""}
+    ${ppl.length ? `<div style="color:var(--red-ink);font-weight:800">${faN(ppl.length)} مسافر در اکانت‌های این ${isSim ? "شماره" : "ایمیل"} هستند.</div>` : ""}
     <div style="color:var(--muted)">اگر فقط نمی‌خواهید دیگر استفاده شود، به جای حذف وضعیتش را «فعلاً استفاده نشه» کنید، یا آن را با یک شماره آزاد جابجا کنید.</div>`;
   $("#dzLbl").textContent = isSim ? `برای تأیید، ۴ رقم آخر شماره را بنویسید (${need.replace(/\d/g, "•")})` : `برای تأیید، قسمت قبل از @ را بنویسید`;
   const inp = $("#dzInput"), go = $("#dzGo"); inp.value = ""; go.disabled = true;
@@ -2099,7 +2099,7 @@ function swapSim(code){
   const pcs = [...new Set(accs.map(a => a.portal))];
   const opts = simsAll().filter(x => x.code !== code && pcs.every(pc => phoneOn(pc, x.code).kind === "free"));
   const accHTML = accs.length ? accs.map(a => `<div class="swap-acc">${flagEl(a.portal, "sm")}<b>${esc(pName(a.portal))}</b><span class="mono">${esc(S.emails.get(a.emailId)?.address || a.emailId)}</span><small>${faN(occupants(a.id).length)} مسافر</small></div>`).join("") : `<div style="color:var(--muted)">این شماره به هیچ اکانتی وصل نیست؛ فقط «فعلاً استفاده نشه» می‌شود.</div>`;
-  const optHTML = opts.length ? opts.map((x, i) => `<label class="swap-opt"><input type="radio" name="to" value="${esc(x.code)}" ${i ? "" : "checked"}><span class="mono">${esc(prettyPhone(x.number))}</span><small>${esc(x.code)}${x.operator ? " · " + esc(x.operator) : ""}</small></label>`).join("") : `<div style="color:#d8394a;font-weight:700">شماره آزادی برای ${esc(pcs.map(pName).join("، ") || "این کار")} نمانده. اول یک شماره جدید اضافه کنید.</div>`;
+  const optHTML = opts.length ? opts.map((x, i) => `<label class="swap-opt"><input type="radio" name="to" value="${esc(x.code)}" ${i ? "" : "checked"}><span class="mono">${esc(prettyPhone(x.number))}</span><small>${esc(x.code)}${x.operator ? " · " + esc(x.operator) : ""}</small></label>`).join("") : `<div style="color:var(--red-ink);font-weight:700">شماره آزادی برای ${esc(pcs.map(pName).join("، ") || "این کار")} نمانده. اول یک شماره جدید اضافه کنید.</div>`;
   openSheet(`جابجایی ${prettyPhone(old.number)}`,
     `<div class="task-lbl">اکانت‌هایی که منتقل می‌شوند</div><div class="swap-list">${accHTML}</div>
      <div class="task-lbl" style="margin-top:14px">شماره جدید</div><div class="swap-list">${optHTML}</div>
@@ -2173,7 +2173,7 @@ function uploadPassports(pcPre, initialFiles, onDone){
     let title = esc(x.f.name), sub = size(x.f.size), right = phase === "pick" ? `<button type="button" class="fx" data-up-rm="${i}" aria-label="حذف ${esc(x.f.name)}">×</button>` : "";
     if (x.state === "up") { sub = "در حال آپلود…"; right = `<span class="fstate spin" aria-label="در حال آپلود"></span>`; }
     if (x.state === "read") { sub = "آپلود شد · در حال خواندن اطلاعات…"; right = `<span class="fstate spin" aria-label="در حال خواندن"></span>`; }
-    if (x.state === "err") { sub = `<span style="color:#d8394a">${esc(x.msg)}</span>`; right = `<span class="fstate err">!</span>`; }
+    if (x.state === "err") { sub = `<span style="color:var(--red-ink)">${esc(x.msg)}</span>`; right = `<span class="fstate err">!</span>`; }
     if (x.state === "done") {
       right = `<span class="fstate ok">✓</span>`;
       if (d?.name) { title = esc(d.name); sub = `<div class="facts">${d.nationality ? `<span>${esc(d.nationality)}</span>` : ""}${d.passportNo ? `<span class="mono">${esc(d.passportNo)}</span>` : ""}${d.expiry ? `<span>انقضا <span class="mono">${esc(d.expiry)}</span></span>` : ""}</div>`; }
