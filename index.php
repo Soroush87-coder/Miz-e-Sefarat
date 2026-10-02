@@ -628,7 +628,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .hero-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .hero h1{margin:0;font-size:var(--fs-2xl);font-weight:800;display:flex;align-items:center;gap:12px}
 .hero .btn{background:var(--surface);border-color:transparent;color:var(--ink);box-shadow:var(--sh-1)}
-.hero .btn.primary{background:var(--ink);color:#fff;box-shadow:none}
+.hero .btn.primary{background:linear-gradient(180deg,#3d7bff,#1f5eff);border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(31,94,255,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+.hero .btn.primary:hover{background:linear-gradient(180deg,#5a8fff,#2f6bff);box-shadow:0 8px 22px rgba(31,94,255,.55),inset 0 1px 0 rgba(255,255,255,.3)}
 .stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:18px}
 .stat{background:var(--surface);color:var(--ink);border-radius:var(--r-md);padding:10px 12px;box-shadow:var(--sh-1)}
 .stat b{display:block;font-size:var(--fs-xl);font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums}
