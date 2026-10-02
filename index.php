@@ -1049,6 +1049,31 @@ button.rs-chip{font:inherit;cursor:pointer}
 button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .rs-chip small{color:var(--muted);font-weight:700;margin-inline-start:2px}
 .rs-table .tag,.rs-table .mono{white-space:nowrap}
+.sec-hint{color:var(--muted);font-size:var(--fs-xs)}
+.accl{display:flex;flex-direction:column;gap:10px;padding:4px 18px 18px}
+.accb{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) auto;gap:14px;align-items:center;background:var(--nv);color:#fff;border:0;border-radius:var(--r-lg);padding:14px 18px;text-align:right;font:inherit;cursor:pointer}
+.accb:hover{background:var(--nv-2)}
+.accb-c{display:flex;flex-direction:column;gap:2px;min-width:0}
+.accb-e{font-size:var(--fs-md);font-weight:700;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
+.accb-p{font-size:var(--fs-sm);opacity:.8;direction:ltr;text-align:left}
+.accb-n{display:flex;flex-wrap:wrap;gap:6px}
+.accb-n i{font-style:normal;font-weight:700;font-size:var(--fs-sm);background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 10px}
+.accb-n em{font-style:normal;opacity:.6;font-size:var(--fs-sm)}
+.accb-o{display:flex;flex-direction:column;align-items:center;gap:2px}
+.accb-o b{background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 12px;font-size:var(--fs-sm)}
+.accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
+.accb-o small{font-size:var(--fs-2xs);color:var(--amber)}
+@media (max-width:640px){.accb{grid-template-columns:1fr auto}.accb-n{grid-column:1/-1;grid-row:2}}
+.res-open{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.res-big{display:flex;align-items:center;gap:10px;font-size:var(--fs-xl);font-weight:800;color:var(--nv);direction:ltr;justify-content:flex-end}
+.res-acc{display:flex;flex-direction:column;gap:6px;background:var(--nv);color:#fff;border-radius:var(--r-lg);padding:14px 16px}
+.res-acc-h{display:flex;align-items:center;gap:10px;font-size:var(--fs-lg)}
+.res-acc-h .accb-o{margin-inline-start:auto}
+.res-acc-k{font-size:var(--fs-xs);opacity:.65;font-weight:700}
+.res-acc-v{font-size:var(--fs-md);font-weight:700;direction:ltr;text-align:left}
+.res-acc .btn{align-self:flex-start;margin-top:4px}
+.res-more{margin-top:8px}
+.res-more summary{cursor:pointer;color:var(--muted);font-weight:700;font-size:var(--fs-sm);padding:6px 0}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1348,44 +1373,40 @@ const copyBtn = t => `<button class="copy" type="button" data-copy="${esc(t)}">�
 function renderCountry(pc){
   const s = countryStats(pc);
   let h = `<div style="--cc:${flagColors(pc)[0] || colorOf(pc)}"><div class="hero"${flagBg(pc)}><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button><button class="btn primary" type="button" data-act="newacc" data-id="${esc(pc)}">+ ثبت در ${esc(pName(pc))}</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button></div></div>
     <div class="stats"><div class="stat active"><b>${faN(s.active)}</b><span>اکانت فعال</span></div><div class="stat check"><b>${faN(s.check)}</b><span>باید چک شود</span></div><div class="stat"><b>${faN(s.free)}</b><span>جای خالی مسافر</span></div><div class="stat"><b>${faN(s.people)}</b><span>مسافر در جریان</span></div><div class="stat"><b>${faN(s.unused + s.none)}</b><span>ایمیل آزاد</span></div><div class="stat"><b>${faN(s.freePhones)}</b><span>شماره آزاد</span></div></div></div>`;
   h += globalAlerts(pc);
-
-  // emails on this country
-  const order = {active:0, check:1, unused:2, none:3};
-  const rows = emailsAll().map(e => ({e, id:accId(pc, e.code), a:S.accounts.get(accId(pc, e.code))})).map(x => ({...x, st:accStatus(x.a)})).sort((x,y) => order[x.st] - order[y.st] || x.e.code.localeCompare(y.e.code));
-  h += `<section class="sec"><div class="sec-h"><h2>ایمیل‌ها در VFS ${esc(pName(pc))} <small>${faN(rows.length)} ایمیل</small></h2></div><div class="rows">
-    <div class="row head"><span>ایمیل</span><span>شماره ثبت‌شده با آن</span><span>وضعیت</span><span>مسافران</span><span></span></div>
-    ${rows.length ? rows.map(x => emailRow(pc, x)).join("") : `<div class="empty">ایمیلی تعریف نشده. از تب «ایمیل و شماره» اضافه کنید.</div>`}</div></section>`;
-
-  // phones on this country
-  const prow = simsAll().map(m => ({m, on:phoneOn(pc, m.code), total:phoneAccounts(m.code).length}));
-  const pOrder = {acc:0, orphan:1, free:2};
-  prow.sort((x,y) => pOrder[x.on.kind] - pOrder[y.on.kind] || x.m.code.localeCompare(y.m.code));
-  h += `<section class="sec"><div class="sec-h"><h2>شماره‌ها در VFS ${esc(pName(pc))} </h2></div><div class="rows">
-    <div class="row phone head"><span>شماره</span><span>وضعیت در ${esc(pName(pc))}</span><span>اکانت در کل کشورها</span><span></span></div>
-    ${prow.map(x => `<div class="row phone ${x.on.kind === "free" ? "" : "dim"}">
-      <div class="who c-main"><span class="av" style="--avc:${x.on.kind === "free" ? "var(--accent)" : "#a86b00"}">${esc(x.m.code.replace("SIM-",""))}</span><div class="cellx"><span><span class="mono">${esc(prettyPhone(x.m.number))}</span>${copyBtn(localPhone(x.m.number))}</span><small>${esc([x.m.code, x.m.operator, x.m.note].filter(Boolean).join(" · "))}</small></div></div>
-      <div class="cellx c-2">${x.on.kind === "acc" ? `<span><span class="st st-active">با اکانت</span> <span class="mono" style="font-size:12.5px">${esc(S.emails.get(x.on.acc.emailId)?.address || x.on.acc.emailId)}</span></span>` : x.on.kind === "orphan" ? `<span><span class="st st-reg">ثبت‌شده، بدون اکانت ما</span></span><small>VFS این شماره را قبول نمی‌کند</small>` : `<span><span class="st st-unused">آزاد</span></span>`}</div>
-      <div class="cellx c-status"><span class="cnt"><b class="${x.total ? "" : "zero"}">${faN(x.total)}</b><span class="lbl-m">اکانت در کل</span></span></div>
-      <div class="acts c-3">${x.on.kind === "free" ? `<button class="btn sm" type="button" data-act="phonetaken" data-id="${esc(regId(pc, x.m.code))}">VFS گفت تکراری است</button>` : x.on.kind === "orphan" ? `<button class="btn sm" type="button" data-act="phonefree" data-id="${esc(regId(pc, x.m.code))}">اشتباه بود، آزاد است</button>` : ""}</div>
-    </div>`).join("") || `<div class="empty">شماره‌ای تعریف نشده.</div>`}</div></section>`;
-
-  // waiting passports
-  const waitP = S.passports.filter(x => x.portal === pc && x.status === "waiting");
-  h += `<section class="sec"><div class="sec-h"><h2>پاسپورت‌های منتظر ${esc(pName(pc))} <small>${faN(waitP.length)}</small></h2><button class="btn sm" type="button" data-act="gopass" data-id="${esc(pc)}">در انتظار ثبت</button></div>
-    ${waitP.length ? `<div class="pgrid">${waitP.map(passCard).join("")}</div>` : `<div class="empty">پاسپورتی منتظر نیست. با «+ آپلود پاسپورت» اضافه کنید.</div>`}</section>`;
-
-  // travellers
-  const ppl = S.people.filter(p => p.portal === pc && p.status !== "removed").sort((a,b) => (b.addedAt || "").localeCompare(a.addedAt || ""));
-  h += `<section class="sec"><div class="sec-h"><h2>مسافران ${esc(pName(pc))} <small>${faN(ppl.length)} نفر</small></h2></div>
-    ${ppl.length ? `<div class="table-wrap"><table><thead><tr><th>اسم</th><th>ایمیل و شماره</th><th>وضعیت</th><th>تاریخ وقت</th><th></th></tr></thead><tbody>${ppl.map(p => `<tr><td><b>${esc(p.name)}</b>${p.note ? `<small>${esc(p.note)}</small>` : ""}</td><td>${credCell(p)}</td><td><span class="pill ${p.status === "booked" ? "ok" : p.status === "waitlist" ? "sun" : ""}">${esc(P_STATUS[p.status])}</span></td><td class="mono">${esc(p.apptDate || "—")}</td><td><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">هنوز مسافری برای ${esc(pName(pc))} ثبت نشده. روی یک اکانت فعال «+ مسافر» را بزنید.</div>`}</section>`;
-
+  h += `<section class="sec"><div class="sec-h"><h2>اکانت‌های ${esc(pName(pc))}</h2><small class="sec-hint">روی هر اکانت بزنید تا مسافرهایش را ببینید</small></div>${accountsList(pc) || `<div class="empty">هنوز اکانتی برای ${esc(pName(pc))} نیست. پاسپورت آپلود کنید؛ سایت ایمیل و شماره برای ساخت اکانت پیشنهاد می‌دهد.</div>`}</section>`;
   h += `</div>`;
   return h;
 }
 
+const liveAcc = a => a && S.emails.has(a.emailId) && (accStatus(a) === "active" || accStatus(a) === "check");
+function accountsList(pc){
+  const accs = [...S.accounts.values()].filter(a => a.portal === pc && liveAcc(a)).sort((x, y) => x.emailId.localeCompare(y.emailId));
+  if (!accs.length) return "";
+  return `<div class="accl">${accs.map(a => { const e = S.emails.get(a.emailId), m = a.simId ? S.sims.get(a.simId) : null, occ = occupants(a.id), st = accStatus(a);
+    return `<button type="button" class="accb" data-act="acc" data-id="${esc(a.id)}">
+      <span class="accb-c"><span class="mono accb-e">${esc(e?.address || a.emailId)}</span><span class="mono accb-p">${m ? esc(prettyPhone(m.number)) : "بدون شماره"}</span></span>
+      <span class="accb-n">${occ.length ? occ.map(p => `<i>${esc(p.name)}</i>`).join("") : `<em>بدون مسافر</em>`}</span>
+      <span class="accb-o ${occ.length >= CAP ? "full" : ""}">${st === "check" ? `<small>⚠ چک شود</small>` : ""}<b>${faN(occ.length)}/${faN(CAP)}</b></span></button>`; }).join("")}</div>`;
+}
+// popup for one phone or email: every country it is on, the paired email/phone and the travellers
+function openRes(kind, code){
+  const x = kind === "sim" ? S.sims.get(code) : S.emails.get(code); if (!x) return;
+  const accs = [...S.accounts.values()].filter(a => liveAcc(a) && (kind === "sim" ? a.simId === code : a.emailId === code));
+  const taken = kind === "sim" ? portalsList().filter(p => phoneOn(p.code, code).kind === "orphan") : [];
+  const val = kind === "sim" ? prettyPhone(x.number) : x.address;
+  openSheet(kind === "sim" ? "شماره" : "ایمیل",
+    `<div class="res-big"><span class="mono">${esc(val)}</span>${copyBtn(kind === "sim" ? localPhone(x.number) : x.address)}</div>
+    ${accs.length ? accs.map(a => { const occ = occupants(a.id), other = kind === "sim" ? (S.emails.get(a.emailId)?.address || a.emailId) : (a.simId ? prettyPhone(S.sims.get(a.simId)?.number || "") : "بدون شماره");
+      return `<div class="res-acc"><div class="res-acc-h">${flagEl(a.portal, "md")}<b>${esc(pName(a.portal))}</b><span class="accb-o ${occ.length >= CAP ? "full" : ""}"><b>${faN(occ.length)}/${faN(CAP)}</b></span></div>
+        <div class="res-acc-k">${kind === "sim" ? "با ایمیل" : "با شماره"}</div><div class="mono res-acc-v">${esc(other)}</div>
+        <div class="res-acc-k">مسافرها</div><div class="accb-n">${occ.length ? occ.map(p => `<i>${esc(p.name)}</i>`).join("") : `<em>بدون مسافر</em>`}</div>
+        <button class="btn sm" type="button" data-act="acc" data-id="${esc(a.id)}">باز کردن اکانت</button></div>`; }).join("") : `<div class="empty">هنوز روی هیچ کشوری اکانت ندارد.</div>`}
+    ${taken.length ? `<div class="res-acc-k">ثبت‌شده در VFS بدون اکانت ما</div><div class="chips">${taken.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + code)}">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><small>×</small></button>`).join("")}</div>` : ""}`,
+    null, `<button class="btn sm" type="button" data-act="${kind}" data-id="${esc(code)}">ویرایش</button>`);
+}
 function emailRow(pc, {e, id, a, st}){
   const sim = a?.simId ? S.sims.get(a.simId) : null, occ = occupants(id).length, d = ago(a?.lastVerified);
   let acts;
@@ -1510,7 +1531,8 @@ function stepCard(pc, s, i, total){
       <div><div class="task-lbl">مسافران</div><div class="plist2">${s.add.map(prow2).join("")}</div></div>
       <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? (s.sim ? credLine("شماره", prettyPhone(s.sim.number), localPhone(s.sim.number)) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div></div>
     </div>
-    <div class="task-acts">${ex || ok ? `<div class="res-q">${ex ? "بعد از ورود به سایت VFS، چه شد؟" : "بعد از تلاش برای ساخت اکانت در سایت VFS، چه شد؟"}</div><div class="res-grid">${acts}</div>` : acts}</div></div>`;
+    <div class="task-acts">${ex || ok ? (() => { const [main, ...rest] = acts.split('<button type="button" class="res').filter(Boolean).map(x => '<button type="button" class="res' + x);
+      return `${main}<details class="res-more"><summary>مشکل داشت؟</summary><div class="res-grid">${rest.join("")}</div></details>`; })() : acts}</div></div>`;
 }
 const STAGES = ["آپلود پاسپورت", "ثبت در اکانت VFS", "Waitlist", "وقت گرفته شد"];
 // The four stages of the work, on top of every page: where each traveller is and what comes next.
@@ -1719,16 +1741,16 @@ function renderRes(){
   const sRows = sims.map(m => {
     const accs = liveAccs.filter(a => a.simId === m.code), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
     const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="این شماره دیگر برای ${esc(pName(p.code))} ثبت‌شده حساب نشود">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><span>ثبت‌شده در VFS</span><small>×</small></button>`).join("")}</div>` : none;
-    return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><span class="mono">${esc(prettyPhone(m.number))}</span>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
+    return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="sim" data-id="${esc(m.code)}">${esc(prettyPhone(m.number))}</button>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
   const eRows = ems.map(e => {
     const accs = liveAccs.filter(a => a.emailId === e.code);
     const used = accs.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), a.simId ? localPhone(S.sims.get(a.simId)?.number || "") || a.simId : "بدون شماره", a.id)).join("")}</div>` : none;
-    return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><span class="mono" style="font-size:12.5px">${esc(e.address)}</span>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td>${rowBtns("email", e.code)}</td></tr>`; }).join("");
+    return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="email" data-id="${esc(e.code)}">${esc(e.address)}</button>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td>${rowBtns("email", e.code)}</td></tr>`; }).join("");
   const sFree = sims.filter(m => !off(m) && !liveAccs.some(a => a.simId === m.code)).length, sOff = sims.filter(off).length;
   const eFree = ems.filter(e => !off(e) && !liveAccs.some(a => a.emailId === e.code)).length, eOff = ems.filter(off).length;
   const extra = (f, o) => [f ? `${faN(f)} بدون کشور` : "", o ? `${faN(o)} استفاده نشه` : ""].filter(Boolean).join(" · ");
   return `<div class="page-h"><div><h1>ایمیل و شماره</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ibtn i-sim" type="button" data-act="sim"><i><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></i>شماره جدید</button><button class="btn ibtn i-mail" type="button" data-act="email"><i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg></i>ایمیل جدید</button><button class="btn primary ibtn i-bulk" type="button" data-act="bulk"><i><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></i>افزودن گروهی</button></div></div>
-    ${map ? `<section class="sec"><div class="sec-h"><h2>چی با چی، روی کدام کشور</h2></div><div class="rs-grid">${map}</div></section>` : ""}
+
     <section class="sec"><div class="sec-h"><h2>شماره‌ها ${cnt(S.sims.size, extra(sFree, sOff))}</h2></div>${S.sims.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>شماره</th><th>کشور و ایمیلی که با این شماره ست شده</th><th></th></tr></thead><tbody>${sRows}</tbody></table></div>` : `<div class="empty">شماره‌ای نیست.</div>`}</section>
     <section class="sec"><div class="sec-h"><h2>ایمیل‌ها ${cnt(S.emails.size, extra(eFree, eOff))}</h2></div>${S.emails.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>آدرس</th><th>کشور و شماره‌ای که با این ایمیل ست شده</th><th></th></tr></thead><tbody>${eRows}</tbody></table></div>` : `<div class="empty">ایمیلی نیست.</div>`}</section>`;
 }
@@ -2303,6 +2325,7 @@ document.addEventListener("click", e => {
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
   if (a === "readappt") return apptReadSheet();
+  if (a === "resopen") return openRes(b.dataset.kind, id);
   if (a === "accdel"){ const acc = S.accounts.get(id); if (!acc || !canWrite) return; const occ = occupants(id); closeSheet();
     return undoable(async () => {
       for (const p of occ) await write(() => db.doc("people/" + p.id).update({status:"removed", doneAt:today(), note:[p.note, "اکانت حذف شد"].filter(Boolean).join(" · ")}));
