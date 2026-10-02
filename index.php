@@ -1101,6 +1101,21 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .res-acc .btn{align-self:flex-start;margin-top:4px}
 .res-more{margin-top:8px}
 .res-more summary{cursor:pointer;color:var(--muted);font-weight:700;font-size:var(--fs-sm);padding:6px 0}
+/* Centred dialog variant of the sheet (country picker) */
+.sheet.center{inset:auto;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100% - 32px));max-height:min(82vh,760px);border-radius:var(--r-xl);box-shadow:var(--sh-pop);animation:none}
+@media (prefers-reduced-motion:no-preference){.sheet.center{animation:popc .2s var(--ease)}@keyframes popc{from{opacity:0;transform:translate(-50%,-48%) scale(.97)}to{opacity:1;transform:translate(-50%,-50%)}}}
+.pc-q{width:100%;border:1.5px solid var(--line);background:var(--soft);color:var(--ink);border-radius:var(--r-pill);padding:12px 18px;font:inherit;outline:none}
+.pc-q:focus{border-color:var(--accent)}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.pc-t{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px 12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-lg);font:inherit;cursor:pointer;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.pc-t:hover{transform:translateY(-2px);box-shadow:var(--sh-2);border-color:var(--line-strong)}
+.pc-f{width:64px;height:43px;border-radius:var(--r-sm);overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.18)}
+.pc-f svg{width:100%;height:100%;display:block}
+.pc-t b{font-weight:800;font-size:var(--fs-sm)}
+.pc-t small{font-family:var(--f-mono);font-size:var(--fs-2xs);color:var(--muted)}
+.pc-ck{position:absolute;top:8px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;background:var(--accent);color:#fff;opacity:0;transform:scale(.6);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+.pc-t[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.pc-t[aria-pressed="true"] .pc-ck{opacity:1;transform:none}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1887,6 +1902,7 @@ async function quick(act, id){
 // ---------- sheets ----------
 let sheetSave = null;
 function openSheet(title, bodyHTML, onSave, leftHTML = "", saveLabel = "ذخیره"){
+  $("#sheet").classList.remove("center");
   const sf = $("#sheetForm"); sf.ondragover = sf.ondragleave = sf.ondrop = null; $("#sheetCancel").hidden = false;
   $("#sheetTitle").textContent = title; sf.innerHTML = bodyHTML; $("#sheetLeft").innerHTML = leftHTML;
   $("#sheetSave").textContent = saveLabel; $("#sheetSave").hidden = !onSave; $("#sheetSave").disabled = !canWrite;
@@ -2337,9 +2353,22 @@ function assignPassports(){
 }
 
 function addPortal(){
-  const have = new Set(S.portals.keys()), opts = CATALOG.filter(c => !have.has(c[0])).map(([c,n]) => [c, `${n} (VFS ${c})`]);
-  openSheet("افزودن کشور", F.sel("pc","کشور",opts,opts[0]?.[0] || ""),
-    async () => { const d = formData(); if (!d.pc) return false; const ok = await write(() => db.doc("portals/" + d.pc).set({code:d.pc, order:S.portals.size})); if (ok) toast("اضافه شد"); return ok; });
+  // centred picker: searchable grid of flag tiles; several countries can be added at once
+  const have = new Set(S.portals.keys()), list = CATALOG.filter(c => !have.has(c[0])), sel = new Set();
+  if (!list.length) { toast("همه کشورها اضافه شده‌اند"); return; }
+  openSheet("افزودن کشور",
+    `<input id="pcQ" class="pc-q" type="search" placeholder="جستجوی کشور…" aria-label="جستجوی کشور" autocomplete="off">
+    <div class="pc-grid" id="pcGrid">${list.map(([c, n]) => `<button type="button" class="pc-t" data-pc="${esc(c)}" data-name="${esc(n + " " + c)}" aria-pressed="false">
+      <span class="pc-f">${flagSVG(c)}</span><b>${esc(n)}</b><small>VFS ${esc(c)}</small><i class="pc-ck" aria-hidden="true">✓</i></button>`).join("")}</div>`,
+    async () => { if (!sel.size) { toast("یک یا چند کشور انتخاب کنید"); return false; }
+      let i = S.portals.size; for (const c of sel) if (!await write(() => db.doc("portals/" + c).set({code:c, order:i++}))) return false;
+      toast(`${faN(sel.size)} کشور اضافه شد`); return true; }, "", "افزودن");
+  $("#sheet").classList.add("center");
+  const sync = () => { $("#sheetSave").textContent = sel.size ? `افزودن ${faN(sel.size)} کشور` : "افزودن"; setSaveEnabled(sel.size > 0); };
+  $("#pcGrid").onclick = e => { const b = e.target.closest(".pc-t"); if (!b) return; const c = b.dataset.pc;
+    sel.has(c) ? sel.delete(c) : sel.add(c); b.setAttribute("aria-pressed", String(sel.has(c))); sync(); };
+  $("#pcQ").oninput = e => { const q = e.target.value.trim().toLowerCase(); document.querySelectorAll(".pc-t").forEach(b => b.hidden = !!q && !b.dataset.name.toLowerCase().includes(q)); };
+  sync(); setTimeout(() => $("#pcQ")?.focus(), 50);
 }
 function bulkAdd(){
   openSheet("افزودن گروهی", `${F.area("bulk","شماره‌ها و ایمیل‌ها (هر خط یکی)","",{ltr:true,hint:"تکراری‌ها خودکار رد می‌شوند."})}<div class="note" id="bulkPrev">هنوز چیزی وارد نشده.</div>`,
