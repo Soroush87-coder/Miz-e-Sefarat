@@ -1045,6 +1045,10 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .ic-btn:hover{border-color:var(--green);color:var(--green-ink)}
 .ic-btn.del:hover{border-color:var(--red);color:var(--red-ink);background:var(--red-soft)}
 .p3-act{display:flex;gap:6px;align-items:center}
+button.rs-chip{font:inherit;cursor:pointer}
+button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
+.rs-chip small{color:var(--muted);font-weight:700;margin-inline-start:2px}
+.rs-table .tag,.rs-table .mono{white-space:nowrap}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1704,18 +1708,22 @@ function renderRes(){
     return `<div class="rs-card"><div class="rs-card-h"${flagBg(p.code)}>${flagEl(p.code, "md")}<b>${esc(pName(p.code))}</b><span>${faN(accs.length)} اکانت</span></div><div class="rs-card-b">${rows}</div></div>`;
   }).join("");
   const cnt = (n, extra) => `<span class="hcount">${faN(n)}</span>${extra ? `<span class="hcount2">${extra}</span>` : ""}`;
-  const chip = (pc, st, txt) => `<span class="rs-chip st-${st}" style="--cc:${colorOf(pc)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
+  // a chip per account: click opens that account's window (travellers, add, delete)
+  const chip = (pc, st, txt, accId) => accId
+    ? `<button type="button" class="rs-chip st-${st}" data-act="acc" data-id="${esc(accId)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span><small>${faN(occupants(accId).length)}/${faN(CAP)}</small></button>`
+    : `<span class="rs-chip st-${st}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
+  const rowBtns = (kind, code) => `<div class="p3-act"><button class="btn sm" type="button" data-act="${kind}" data-id="${esc(code)}">ویرایش</button><button class="btn sm ic-btn del" type="button" data-act="harddel" data-kind="${kind}" data-id="${esc(code)}" title="حذف" aria-label="حذف">×</button></div>`;
   const off = x => x.status === "inactive";
   const ord = (x, y) => off(x) - off(y) || x.code.localeCompare(y.code);
   const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
   const sRows = sims.map(m => {
     const accs = liveAccs.filter(a => a.simId === m.code), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
-    const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId)).join("")}${orphan.map(p => chip(p.code, "reg", "تکراری")).join("")}</div>` : none;
-    return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><span class="mono">${esc(prettyPhone(m.number))}</span>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td><button class="btn sm" type="button" data-act="sim" data-id="${esc(m.code)}">ویرایش</button></td></tr>`; }).join("");
+    const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => chip(p.code, "reg", "تکراری")).join("")}</div>` : none;
+    return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><span class="mono">${esc(prettyPhone(m.number))}</span>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
   const eRows = ems.map(e => {
     const accs = liveAccs.filter(a => a.emailId === e.code);
-    const used = accs.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), a.simId ? localPhone(S.sims.get(a.simId)?.number || "") || a.simId : "بدون شماره")).join("")}</div>` : none;
-    return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><span class="mono" style="font-size:12.5px">${esc(e.address)}</span>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td><button class="btn sm" type="button" data-act="email" data-id="${esc(e.code)}">ویرایش</button></td></tr>`; }).join("");
+    const used = accs.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), a.simId ? localPhone(S.sims.get(a.simId)?.number || "") || a.simId : "بدون شماره", a.id)).join("")}</div>` : none;
+    return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><span class="mono" style="font-size:12.5px">${esc(e.address)}</span>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td>${rowBtns("email", e.code)}</td></tr>`; }).join("");
   const sFree = sims.filter(m => !off(m) && !liveAccs.some(a => a.simId === m.code)).length, sOff = sims.filter(off).length;
   const eFree = ems.filter(e => !off(e) && !liveAccs.some(a => a.emailId === e.code)).length, eOff = ems.filter(off).length;
   const extra = (f, o) => [f ? `${faN(f)} بدون کشور` : "", o ? `${faN(o)} استفاده نشه` : ""].filter(Boolean).join(" · ");
@@ -1874,7 +1882,7 @@ function openAccount(id){
       <div><span class="lbl">آخرین ورود</span><b style="font-size:13px">${esc(last)}</b>${a?.lastVerified === today() ? "" : `<button class="copy" type="button" data-act="ok" data-id="${esc(id)}">همین الان وارد شدم</button>`}</div>
     </div>
     <div class="up-lbl" style="justify-content:space-between"><span>مسافران این اکانت</span>${capPill(occ.length)}</div>
-    ${occ.length ? `<div class="plist">${occ.map(p => `<div class="prow"><span><b>${esc(p.name)}</b> <span class="pill ${p.status === "booked" ? "ok" : "sun"}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? ` <span class="mono" style="font-size:12px">${esc(p.apptDate)}</span>` : ""}</span><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button></div>`).join("")}</div>` : ""}
+    ${occ.length ? `<div class="plist">${occ.map(p => `<div class="prow"><span><b>${esc(p.name)}</b> <span class="pill ${p.status === "booked" ? "ok" : "sun"}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? ` <span class="mono" style="font-size:12px">${esc(p.apptDate)}</span>` : ""}</span><span class="p3-act"><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></span></div>`).join("")}</div>` : `<div class="empty" style="padding:10px">هنوز مسافری روی این اکانت نیست.</div>`}
     ${occ.length < CAP && (st === "active" || st === "check") ? `<button class="btn primary" type="button" data-act="addpeople" data-id="${esc(id)}" style="align-self:flex-start">+ افزودن مسافر</button>` : ""}
     <details class="more"><summary>ویرایش اطلاعات اکانت</summary>
       ${F.sel("simId","شماره ثبت‌شده با این اکانت",[["","—"], ...phoneOptions(pc, a?.simId).map(([v,t]) => [v,t])],a?.simId || "")}
@@ -1884,7 +1892,8 @@ function openAccount(id){
     async () => { const d = formData();
       const ok = await saveAccount(pc, em, {status:d.status, lastVerified:d.lastVerified, simId:d.simId, note:d.note.trim()});
       if (ok && d.simId && d.status === "active") await setReg(pc, d.simId, "registered", em);
-      if (ok) { await addLog("edit", pc, {emailId:em, simId:d.simId}); toast("ذخیره شد"); } return ok; });
+      if (ok) { await addLog("edit", pc, {emailId:em, simId:d.simId}); toast("ذخیره شد"); } return ok; },
+    `<button class="btn sm ghost-red" type="button" data-act="accdel" data-id="${esc(id)}">حذف اکانت</button>`);
 }
 function addPeople(id, pre = []){
   const [pc, em] = id.split("__"), free = CAP - occupants(id).length;
@@ -2294,6 +2303,12 @@ document.addEventListener("click", e => {
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
   if (a === "readappt") return apptReadSheet();
+  if (a === "accdel"){ const acc = S.accounts.get(id); if (!acc || !canWrite) return; const occ = occupants(id); closeSheet();
+    return undoable(async () => {
+      for (const p of occ) await write(() => db.doc("people/" + p.id).update({status:"removed", doneAt:today(), note:[p.note, "اکانت حذف شد"].filter(Boolean).join(" · ")}));
+      if (await write(() => db.doc("accounts/" + id).delete())) { await addLog("edit", acc.portal, {emailId:acc.emailId, simId:acc.simId || "", note:"اکانت حذف شد"});
+        toast(`اکانت ${pName(acc.portal)} حذف شد${occ.length ? ` · ${faN(occ.length)} مسافرش «اتمام کار» شد` : ""}`); }
+    }); }
   if (a === "pfinish" || a === "pdel"){ const p = S.people.find(x => x.id === id); if (!p || !canWrite) return;
     closeSheet();
     return undoable(async () => {
