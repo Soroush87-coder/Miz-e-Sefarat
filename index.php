@@ -998,13 +998,20 @@ tr.rs-off td{opacity:.55}tr.rs-off td:last-child{opacity:1}
 .hero-body{position:relative;z-index:1;width:min(420px,100%);margin-inline-end:auto;padding:48px 40px 8px;display:flex;flex-direction:column;gap:14px;min-height:300px}
 .hero-body h1{margin:0;font-size:var(--fs-3xl);line-height:1.25;font-weight:800;color:var(--hero-ink)}
 .hero-body p{margin:-6px 0 6px;color:var(--hero-sub);font-size:var(--fs-sm);font-weight:700}
-.hero-drop.qdrop{margin:0;background:var(--navy);color:#fff;border:2px dashed rgba(255,255,255,.35);border-radius:var(--r-lg);padding:26px 22px;justify-content:flex-start;gap:16px;box-shadow:0 18px 34px rgba(5,63,92,.35);transition:transform var(--dur) var(--ease),background var(--dur) var(--ease)}
-.hero-drop.qdrop:hover{transform:translateY(-2px);background:#07496b}
-.hero-drop .hd-ic{display:grid;place-items:center;width:58px;height:58px;border-radius:var(--r-lg);background:var(--amber);flex:none}
-.hero-drop .hd-ic svg{width:28px;height:28px;stroke:var(--navy);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.hero-drop b{font-size:var(--fs-lg);font-weight:800;color:#fff;display:block}
-.hero-drop span{color:rgba(255,255,255,.75);font-size:var(--fs-xs);font-weight:600}
-.hero-drop.over{background:#0a5a82;border-color:var(--amber)}
+/* Upload card: glossy cobalt with a soft light sweep */
+.hero-drop.qdrop{margin:0;position:relative;overflow:hidden;isolation:isolate;color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:var(--r-lg);padding:26px 22px;justify-content:flex-start;gap:16px;cursor:pointer;
+  background:linear-gradient(160deg,#4f8cff 0%,#2563ff 45%,#1747d6 100%);
+  box-shadow:0 14px 34px rgba(31,94,255,.45),0 2px 6px rgba(10,30,90,.35),inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 0 rgba(0,0,40,.18);
+  transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease),filter var(--dur) var(--ease)}
+.hero-drop.qdrop::before{content:"";position:absolute;inset:0 0 50% 0;z-index:-1;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0));border-radius:inherit}
+.hero-drop.qdrop::after{content:"";position:absolute;top:-30%;bottom:-30%;width:38%;left:-60%;z-index:-1;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg)}
+@media (prefers-reduced-motion:no-preference){.hero-drop.qdrop::after{animation:sheen 4.5s var(--ease) infinite}@keyframes sheen{0%,62%{left:-60%}100%{left:130%}}}
+.hero-drop.qdrop:hover{transform:translateY(-3px);filter:brightness(1.08);box-shadow:0 20px 42px rgba(31,94,255,.55),0 2px 6px rgba(10,30,90,.35),inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 0 rgba(0,0,40,.18)}
+.hero-drop .hd-ic{display:grid;place-items:center;width:58px;height:58px;border-radius:var(--r-lg);background:rgba(255,255,255,.95);flex:none;box-shadow:0 6px 14px rgba(0,20,80,.3)}
+.hero-drop .hd-ic svg{width:28px;height:28px;stroke:#1f5eff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hero-drop b{font-size:var(--fs-lg);font-weight:800;color:#fff;display:block;text-shadow:0 1px 2px rgba(0,20,80,.35)}
+.hero-drop span{color:rgba(255,255,255,.85);font-size:var(--fs-xs);font-weight:600}
+.hero-drop.over{filter:brightness(1.12);border-color:var(--amber);box-shadow:0 0 0 4px rgba(247,173,25,.35),0 20px 42px rgba(31,94,255,.55)}
 .hero-res{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 40px 32px}
 .hx{background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--frame);border-radius:var(--r-lg);padding:12px 14px;box-shadow:var(--sh-2);min-width:0}
 .hx-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
