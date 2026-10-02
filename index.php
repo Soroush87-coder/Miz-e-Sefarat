@@ -237,7 +237,8 @@ function tg_st($a) { // same rule as the site: active = login confirmed in the l
 }
 function tg_occ($all, $accId) { $n = 0; foreach ($all['people'] ?? [] as $p) if (($p['accountId'] ?? '') === $accId && !in_array($p['status'] ?? '', ['removed', 'done'], true)) $n++; return $n; }
 function tg_bar($n) { return str_repeat('▰', min($n, TG_CAP)) . str_repeat('▱', max(0, TG_CAP - $n)); }
-function tg_live($all) { return array_filter($all['accounts'] ?? [], fn($a) => in_array(tg_st($a), ['active', 'check'], true)); }
+// live accounts whose email still exists in the desk (accounts of deleted/inactive emails are ignored)
+function tg_live($all) { return array_filter($all['accounts'] ?? [], fn($a) => in_array(tg_st($a), ['active', 'check'], true) && isset($all['emails'][$a['emailId'] ?? '']) && ($all['emails'][$a['emailId']]['status'] ?? '') !== 'inactive'); }
 function tg_portals($all) { $p = $all['portals'] ?? []; uasort($p, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99)); return array_keys($p); }
 function tg_acc_line($all, $a) {
   $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $m = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره';
@@ -250,20 +251,28 @@ function tg_view($key) {
   if ($key === 'c' || $key === 'f') {
     $rows = []; $lines = [];
     foreach (tg_portals($all) as $pc) {
-      $free = 0; $best = null;
-      foreach (tg_live($all) as $a) if ($a['portal'] === $pc && tg_st($a) === 'active') { $f = TG_CAP - tg_occ($all, $a['id']); $free += max(0, $f); if ($f > 0 && (!$best || $f < $best[1])) $best = [$a, $f]; }
+      $free = 0; $best = null; $nAcc = 0; $nPpl = 0;
+      foreach (tg_live($all) as $a) if ($a['portal'] === $pc) { $nAcc++; $o = tg_occ($all, $a['id']); $nPpl += $o;
+        if (tg_st($a) === 'active') { $f = TG_CAP - $o; $free += max(0, $f); if ($f > 0 && (!$best || $f < $best[1])) $best = [$a, $f]; } }
       $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc) . ' · ' . tg_fa($free), 'callback_data' => 'c:' . $pc];
-      if ($key === 'f') $lines[] = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>: ' . ($free ? tg_fa($free) . ' جای خالی' . ($best ? "\n   پیشنهاد: <code>" . tg_h($all['emails'][$best[0]['emailId']]['address'] ?? '') . '</code> (' . tg_fa($best[1]) . ' جا)' : '') : 'جای خالی نیست');
+      if ($key === 'f') {
+        // one block per country: name, then the numbers, then the account to fill next on its own line (keeps LTR emails from wrapping)
+        $l = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>' . "\n";
+        if (!$nAcc) $l .= '— هنوز اکانتی ساخته نشده';
+        else { $l .= tg_fa($nAcc) . ' اکانت · ' . tg_fa($nPpl) . ' مسافر · ' . ($free ? tg_fa($free) . ' جای خالی' : 'همه پر');
+          if ($best) $l .= "\n↳ <code>" . tg_h($all['emails'][$best[0]['emailId']]['address']) . '</code>'; }
+        $lines[] = $l;
+      }
     }
     $kb = array_chunk($rows, 2); $kb[] = $back[0];
-    return [$key === 'f' ? "🟢 <b>جای خالی اکانت‌های فعال</b>\n\n" . implode("\n", $lines) : '🌍 <b>کدام کشور؟</b> (عدد = جای خالی)', $kb];
+    return [$key === 'f' ? "🟢 <b>جای خالی اکانت‌های فعال</b>\n<i>↳ اکانت پیشنهادی برای مسافر بعدی</i>\n\n" . implode("\n\n", $lines) : '🌍 <b>کدام کشور؟</b> (عدد = جای خالی)', $kb];
   }
   if (preg_match('/^c:([A-Z]{2})$/', $key, $m)) {
     $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $free = 0; $out = [];
-    foreach ($accs as $a) { $out[] = tg_acc_line($all, $a); if (tg_st($a) === 'active') $free += max(0, TG_CAP - tg_occ($all, $a['id'])); }
+    $ppl = 0; foreach ($accs as $a) { $out[] = tg_acc_line($all, $a); $ppl += tg_occ($all, $a['id']); if (tg_st($a) === 'active') $free += max(0, TG_CAP - tg_occ($all, $a['id'])); }
     $used = array_column($accs, 'emailId'); $fe = 0; foreach ($all['emails'] ?? [] as $e) if (($e['status'] ?? '') !== 'inactive' && !in_array($e['id'], $used, true) && tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null) !== 'none') $fe++;
     $fs = 0; foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $busy = false; foreach ($accs as $a) if (($a['simId'] ?? '') === $sm['id']) $busy = true; if (!$busy && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') !== 'registered') $fs++; }
-    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b> · ' . tg_fa(count($accs)) . ' اکانت · ' . tg_fa($free) . " جای خالی\n━━━━━━━━━━\n" . ($out ? implode("\n", $out) : 'هنوز اکانتی نیست') . "\n━━━━━━━━━━\nآزاد برای اکانت جدید: " . tg_fa($fe) . ' ایمیل · ' . tg_fa($fs) . ' شماره';
+    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . "</b>\n" . ($accs ? tg_fa(count($accs)) . ' اکانت · ' . tg_fa($ppl) . ' مسافر · ' . ($free ? tg_fa($free) . ' جای خالی' : 'همه پر') : 'هنوز اکانتی ساخته نشده') . "\n━━━━━━━━━━\n" . ($out ? implode("\n\n", $out) : '—') . "\n━━━━━━━━━━\nآزاد برای اکانت جدید: " . tg_fa($fe) . ' ایمیل · ' . tg_fa($fs) . ' شماره';
     return [$t, [[['text' => '← کشورها', 'callback_data' => 'c'], ['text' => 'منو', 'callback_data' => 'm']]]];
   }
   if ($key === 'e' || $key === 's') {
