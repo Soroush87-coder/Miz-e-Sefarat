@@ -1066,6 +1066,8 @@ button.rs-chip{font:inherit;cursor:pointer}
 button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .rs-chip small{color:var(--muted);font-weight:700;margin-inline-start:2px}
 .rs-table .tag,.rs-table .mono{white-space:nowrap}
+.rs-chip.empty{opacity:.5;border-style:dashed;background:transparent}
+.rs-chip.empty:hover{opacity:1}
 .sec-hint{color:var(--muted);font-size:var(--fs-xs)}
 .accl{display:flex;flex-direction:column;gap:10px;padding:4px 18px 18px}
 .accb{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) auto;gap:14px;align-items:center;background:var(--nv);color:#fff;border:0;border-radius:var(--r-lg);padding:14px 18px;text-align:right;font:inherit;cursor:pointer}
@@ -1781,18 +1783,18 @@ function renderRes(){
   const cnt = (n, extra) => `<span class="hcount">${faN(n)}</span>${extra ? `<span class="hcount2">${extra}</span>` : ""}`;
   // a chip per account: click opens that account's window (travellers, add, delete)
   const chip = (pc, st, txt, accId) => accId
-    ? `<button type="button" class="rs-chip st-${st}" data-act="acc" data-id="${esc(accId)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span><small>${faN(occupants(accId).length)}/${faN(CAP)}</small></button>`
+    ? `<button type="button" class="rs-chip st-${st} ${occupants(accId).length ? "" : "empty"}" data-act="acc" data-id="${esc(accId)}" ${occupants(accId).length ? "" : `title="اکانت ساخته شده ولی هنوز مسافری ندارد"`}>${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span><small>${faN(occupants(accId).length)}/${faN(CAP)}</small></button>`
     : `<span class="rs-chip st-${st}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
   const rowBtns = (kind, code) => `<div class="p3-act"><button class="btn sm" type="button" data-act="${kind}" data-id="${esc(code)}">ویرایش</button><button class="btn sm ic-btn del" type="button" data-act="harddel" data-kind="${kind}" data-id="${esc(code)}" title="حذف" aria-label="حذف">×</button></div>`;
   const off = x => x.status === "inactive";
   const ord = (x, y) => off(x) - off(y) || x.code.localeCompare(y.code);
   const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
   const sRows = sims.map(m => {
-    const accs = liveAccs.filter(a => a.simId === m.code), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
+    const accs = liveAccs.filter(a => a.simId === m.code).sort((x, y) => occupants(y.id).length - occupants(x.id).length), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
     const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="این شماره دیگر برای ${esc(pName(p.code))} ثبت‌شده حساب نشود">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><span>ثبت‌شده در VFS</span><small>×</small></button>`).join("")}</div>` : none;
     return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="sim" data-id="${esc(m.code)}">${esc(prettyPhone(m.number))}</button>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
   const eRows = ems.map(e => {
-    const accs = liveAccs.filter(a => a.emailId === e.code);
+    const accs = liveAccs.filter(a => a.emailId === e.code).sort((x, y) => occupants(y.id).length - occupants(x.id).length);
     const used = accs.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), a.simId ? localPhone(S.sims.get(a.simId)?.number || "") || a.simId : "بدون شماره", a.id)).join("")}</div>` : none;
     return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="email" data-id="${esc(e.code)}">${esc(e.address)}</button>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td>${rowBtns("email", e.code)}</td></tr>`; }).join("");
   const sFree = sims.filter(m => !off(m) && !liveAccs.some(a => a.simId === m.code)).length, sOff = sims.filter(off).length;
