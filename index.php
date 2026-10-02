@@ -12,6 +12,9 @@ $CONFIG = [
   'workspace_id'      => '',                   // فقط اگر Claude خطای workspace داد: شناسه workspace (wrkspc_...)
   'model'             => 'claude-sonnet-5-5',  // مدلی که پاسپورت را می‌خواند
   'keep_days'         => 30,                   // پاسپورت‌ها چند روز بعد از آپلود پاک شوند
+  'telegram_token'    => '',                   // اختیاری: توکن ربات تلگرام از @BotFather
+  'telegram_chat'     => '',                   // شناسه گروه/چت‌های مجاز، با ویرگول (ربات خودش شناسه را می‌گوید)
+  'telegram_notify'   => true,                 // نوتیف خودکار در گروه (اکانت جدید، مسافر، وقت)
 ];
 // ==========================================================================
 
@@ -29,7 +32,8 @@ session_set_cookie_params(['lifetime' => 60 * 60 * 24 * 30, 'path' => '/', 'secu
 session_start();
 
 const COLS = ['sims', 'emails', 'portals', 'accounts', 'regs', 'people', 'logs', 'passports'];
-const COUNTRY_FA = ['GR'=>'یونان','IT'=>'ایتالیا','FR'=>'فرانسه','CZ'=>'چک','FI'=>'فنلاند','ES'=>'اسپانیا','DE'=>'آلمان','NL'=>'هلند','BE'=>'بلژیک','AT'=>'اتریش','CH'=>'سوئیس','PT'=>'پرتغال','PL'=>'لهستان','HU'=>'مجارستان','SE'=>'سوئد','DK'=>'دانمارک','NO'=>'نروژ','MT'=>'مالت','CY'=>'قبرس','HR'=>'کرواسی','SI'=>'اسلوونی','SK'=>'اسلواکی','LU'=>'لوکزامبورگ','LV'=>'لتونی','LT'=>'لیتوانی','EE'=>'استونی','IS'=>'ایسلند','BG'=>'بلغارستان','RO'=>'رومانی','UK'=>'بریتانیا','CA'=>'کانادا','AU'=>'استرالیا'];
+const COUNTRY_FA = ['GR'=>'یونان','IT'=>'ایتالیا','FR'=>'فرانسه','CZ'=>'چک','FI'=>'فنلاند','ES'=>'اسپانیا','DE'=>'آلمان','NL'=>'هلند','BE'=>'بلژیک','AT'=>'اتریش','CH'=>'سوئیس','PT'=>'پرتغال','PL'=>'لهستان','HU'=>'مجارستان','SE'=>'سوئد','DK'=>'دانمارک','NO'=>'نروژ','MT'=>'مالت','CY'=>'قبرس','HR'=>'کرواسی','SI'=>'اسلوونی','SK'=>'اسلواکی','LU'=>'لوکزامبورگ','LV'=>'لتونی','LT'=>'لیتوانی','EE'=>'استونی','IS'=>'ایسلند','BG'=>'بلغارستان','RO'=>'رومانی','UK'=>'بریتانیا','CA'=>'کانادا','AU'=>'استرالیا','US'=>'آمریکا'];
+const TG_CAP = 5, TG_FRESH = 30;   // Telegram bot: places per account, days an account counts as active
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
 function json_out($a, $code = 200) { http_response_code($code); header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store'); echo json_encode($a, JSON_UNESCAPED_UNICODE); exit; }
@@ -54,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_pw'])) {
   sleep(1); $loginError = true;
 }
 $authed = !empty($_SESSION['ok']);
+if (isset($_GET['tg'])) tg_webhook();
+if (isset($_GET['tgsetup']) && $authed) tg_setup();
 
 // ---------- storage ----------
 function pdo() {
@@ -205,6 +211,125 @@ function ai_read_appt($fileId, $text) {
     'time' => preg_match('/^\d{1,2}:\d{2}$/', $str('time')) ? $str('time') : '', 'center' => $str('center'), 'reference' => $str('reference'), 'applicants' => $apps]]);
 }
 
+// ---------- Telegram bot: menu of countries / emails / phones / free places, plus notifications ----------
+function tg_api($method, $params) {
+  global $CONFIG;
+  if ($CONFIG['telegram_token'] === '' || !function_exists('curl_init')) return null;
+  $ch = curl_init('https://api.telegram.org/bot' . $CONFIG['telegram_token'] . '/' . $method);
+  curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_HTTPHEADER => ['content-type: application/json'],
+    CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE)]);
+  $r = curl_exec($ch); curl_close($ch);
+  return $r === false ? null : json_decode($r, true);
+}
+function tg_secret() { global $CONFIG; return substr(hash('sha256', 'miz:' . $CONFIG['telegram_token']), 0, 32); }
+function tg_chats() { global $CONFIG; return array_values(array_filter(array_map('trim', explode(',', (string)$CONFIG['telegram_chat'])), 'strlen')); }
+function tg_all() { $o = []; foreach (pdo()->query("SELECT col, id, data FROM docs WHERE col IN ('sims','emails','portals','accounts','regs','people')")->fetchAll(PDO::FETCH_ASSOC) as $r) $o[$r['col']][$r['id']] = json_decode($r['data'], true) + ['id' => $r['id']]; return $o; }
+function tg_flag($pc) { $pc = $pc === 'UK' ? 'GB' : $pc; if (!preg_match('/^[A-Z]{2}$/', $pc)) return '🏳'; return mb_chr(0x1F1E6 + ord($pc[0]) - 65) . mb_chr(0x1F1E6 + ord($pc[1]) - 65); }
+function tg_cname($pc) { return COUNTRY_FA[$pc] ?? $pc; }
+function tg_fa($n) { return strtr((string)$n, ['0'=>'۰','1'=>'۱','2'=>'۲','3'=>'۳','4'=>'۴','5'=>'۵','6'=>'۶','7'=>'۷','8'=>'۸','9'=>'۹']); }
+function tg_phone($n) { if (preg_match('/^\+971(\d{2})(\d{3})(\d{4})$/', (string)$n, $m)) return "0$m[1] $m[2] $m[3]"; return (string)$n; }
+function tg_h($t) { return htmlspecialchars((string)$t, ENT_QUOTES); }
+function tg_st($a) { // same rule as the site: active = login confirmed in the last 30 days
+  if (!$a || empty($a['status']) || $a['status'] === 'unknown') return 'unused';
+  if ($a['status'] === 'none') return 'none';
+  $d = empty($a['lastVerified']) ? null : (int)floor((strtotime(date('Y-m-d')) - strtotime($a['lastVerified'])) / 86400);
+  return $d !== null && $d <= TG_FRESH ? 'active' : 'check';
+}
+function tg_occ($all, $accId) { $n = 0; foreach ($all['people'] ?? [] as $p) if (($p['accountId'] ?? '') === $accId && !in_array($p['status'] ?? '', ['removed', 'done'], true)) $n++; return $n; }
+function tg_bar($n) { return str_repeat('▰', min($n, TG_CAP)) . str_repeat('▱', max(0, TG_CAP - $n)); }
+function tg_live($all) { return array_filter($all['accounts'] ?? [], fn($a) => in_array(tg_st($a), ['active', 'check'], true)); }
+function tg_portals($all) { $p = $all['portals'] ?? []; uasort($p, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99)); return array_keys($p); }
+function tg_acc_line($all, $a) {
+  $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $m = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره';
+  $n = tg_occ($all, $a['id']);
+  return '<code>' . tg_h($e) . '</code> + <code>' . tg_h($m) . '</code>' . "\n   " . tg_bar($n) . ' ' . tg_fa($n) . '/' . tg_fa(TG_CAP) . ($n >= TG_CAP ? ' (پر)' : '') . (tg_st($a) === 'check' ? ' · ⚠ چک شود' : '');
+}
+function tg_view($key) {
+  $all = tg_all(); $back = [[['text' => '← منو', 'callback_data' => 'm']]];
+  if ($key === 'm') return ["<b>میز سفارت</b> 👇", [[['text' => '🌍 کشورها', 'callback_data' => 'c'], ['text' => '🟢 جای خالی', 'callback_data' => 'f']], [['text' => '📧 ایمیل‌ها', 'callback_data' => 'e'], ['text' => '📱 شماره‌ها', 'callback_data' => 's']]]];
+  if ($key === 'c' || $key === 'f') {
+    $rows = []; $lines = [];
+    foreach (tg_portals($all) as $pc) {
+      $free = 0; $best = null;
+      foreach (tg_live($all) as $a) if ($a['portal'] === $pc && tg_st($a) === 'active') { $f = TG_CAP - tg_occ($all, $a['id']); $free += max(0, $f); if ($f > 0 && (!$best || $f < $best[1])) $best = [$a, $f]; }
+      $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc) . ' · ' . tg_fa($free), 'callback_data' => 'c:' . $pc];
+      if ($key === 'f') $lines[] = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>: ' . ($free ? tg_fa($free) . ' جای خالی' . ($best ? "\n   پیشنهاد: <code>" . tg_h($all['emails'][$best[0]['emailId']]['address'] ?? '') . '</code> (' . tg_fa($best[1]) . ' جا)' : '') : 'جای خالی نیست');
+    }
+    $kb = array_chunk($rows, 2); $kb[] = $back[0];
+    return [$key === 'f' ? "🟢 <b>جای خالی اکانت‌های فعال</b>\n\n" . implode("\n", $lines) : '🌍 <b>کدام کشور؟</b> (عدد = جای خالی)', $kb];
+  }
+  if (preg_match('/^c:([A-Z]{2})$/', $key, $m)) {
+    $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $free = 0; $out = [];
+    foreach ($accs as $a) { $out[] = tg_acc_line($all, $a); if (tg_st($a) === 'active') $free += max(0, TG_CAP - tg_occ($all, $a['id'])); }
+    $used = array_column($accs, 'emailId'); $fe = 0; foreach ($all['emails'] ?? [] as $e) if (($e['status'] ?? '') !== 'inactive' && !in_array($e['id'], $used, true) && tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null) !== 'none') $fe++;
+    $fs = 0; foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $busy = false; foreach ($accs as $a) if (($a['simId'] ?? '') === $sm['id']) $busy = true; if (!$busy && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') !== 'registered') $fs++; }
+    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b> · ' . tg_fa(count($accs)) . ' اکانت · ' . tg_fa($free) . " جای خالی\n━━━━━━━━━━\n" . ($out ? implode("\n", $out) : 'هنوز اکانتی نیست') . "\n━━━━━━━━━━\nآزاد برای اکانت جدید: " . tg_fa($fe) . ' ایمیل · ' . tg_fa($fs) . ' شماره';
+    return [$t, [[['text' => '← کشورها', 'callback_data' => 'c'], ['text' => 'منو', 'callback_data' => 'm']]]];
+  }
+  if ($key === 'e' || $key === 's') {
+    $col = $key === 'e' ? 'emails' : 'sims'; $rows = [];
+    foreach ($all[$col] ?? [] as $x) if (($x['status'] ?? '') !== 'inactive') $rows[] = ['text' => $key === 'e' ? $x['address'] : tg_phone($x['number']), 'callback_data' => $key . ':' . $x['id']];
+    $kb = array_chunk($rows, $key === 'e' ? 1 : 2); $kb[] = $back[0];
+    return [$key === 'e' ? '📧 <b>کدام ایمیل؟</b>' : '📱 <b>کدام شماره؟</b>', $kb];
+  }
+  if (preg_match('/^(e|s):([A-Za-z0-9_\-]+)$/', $key, $m)) {
+    $isE = $m[1] === 'e'; $id = $m[2]; $x = $all[$isE ? 'emails' : 'sims'][$id] ?? null; if (!$x) return ['پیدا نشد', $back];
+    $lines = [];
+    foreach (tg_live($all) as $a) if (($isE ? $a['emailId'] : ($a['simId'] ?? '')) === $id) {
+      $n = tg_occ($all, $a['id']); $other = $isE ? (!empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره') : ($all['emails'][$a['emailId']]['address'] ?? '');
+      $lines[] = tg_flag($a['portal']) . ' ' . tg_cname($a['portal']) . ' · <code>' . tg_h($other) . '</code> · ' . tg_fa($n) . '/' . tg_fa(TG_CAP) . ($n >= TG_CAP ? ' (پر)' : '');
+    }
+    if (!$isE) { $dup = []; foreach ($all['regs'] ?? [] as $r) if (($r['simId'] ?? '') === $id && ($r['status'] ?? '') === 'registered') { $has = false; foreach (tg_live($all) as $a) if ($a['portal'] === $r['portal'] && ($a['simId'] ?? '') === $id) $has = true; if (!$has) $dup[] = tg_flag($r['portal']) . ' ' . tg_cname($r['portal']); }
+      if ($dup) $lines[] = '❌ تکراری در VFS: ' . implode('، ', $dup); }
+    $title = $isE ? '📧 <code>' . tg_h($x['address']) . '</code>' : '📱 <code>' . tg_h(tg_phone($x['number'])) . '</code>';
+    return [$title . ' روی ' . tg_fa(count(array_filter($lines, fn($l) => strpos($l, '❌') !== 0))) . " کشور:\n" . ($lines ? implode("\n", $lines) : 'هنوز روی هیچ کشوری نیست'), [[['text' => $isE ? '← ایمیل‌ها' : '← شماره‌ها', 'callback_data' => $m[1]], ['text' => 'منو', 'callback_data' => 'm']]]];
+  }
+  return tg_view('m');
+}
+function tg_webhook() {
+  if (!hash_equals(tg_secret(), (string)($_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? ''))) { http_response_code(403); exit; }
+  $u = json_decode(file_get_contents('php://input'), true) ?: [];
+  $cb = $u['callback_query'] ?? null; $msg = $cb['message'] ?? ($u['message'] ?? null);
+  $chat = (string)($msg['chat']['id'] ?? ''); if ($chat === '') exit;
+  if (!in_array($chat, tg_chats(), true)) {
+    if ($cb) tg_api('answerCallbackQuery', ['callback_query_id' => $cb['id']]);
+    else tg_api('sendMessage', ['chat_id' => $chat, 'parse_mode' => 'HTML', 'text' => "این چت هنوز اجازه ندارد.\nشناسه این چت: <code>$chat</code>\nآن را در telegram_chat بالای فایل index.php بگذارید."]);
+    exit;
+  }
+  try {
+    if ($cb) { [$t, $kb] = tg_view((string)($cb['data'] ?? 'm')); tg_api('answerCallbackQuery', ['callback_query_id' => $cb['id']]);
+      tg_api('editMessageText', ['chat_id' => $chat, 'message_id' => $msg['message_id'], 'text' => $t, 'parse_mode' => 'HTML', 'reply_markup' => ['inline_keyboard' => $kb]]); }
+    elseif (preg_match('#^/(start|menu|m)\b#', (string)($msg['text'] ?? ''))) { [$t, $kb] = tg_view('m'); tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML', 'reply_markup' => ['inline_keyboard' => $kb]]); }
+  } catch (Throwable $e) {}
+  exit;
+}
+function tg_setup() {
+  global $CONFIG;
+  header('Content-Type: text/html; charset=utf-8');
+  if ($CONFIG['telegram_token'] === '') { echo '<p dir="rtl">اول telegram_token را بالای فایل بگذارید.</p>'; exit; }
+  $url = (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . strtok($_SERVER['REQUEST_URI'], '?') . '?tg=1';
+  $r = tg_api('setWebhook', ['url' => $url, 'secret_token' => tg_secret(), 'allowed_updates' => ['message', 'callback_query']]);
+  tg_api('setMyCommands', ['commands' => [['command' => 'menu', 'description' => 'منوی میز سفارت']]]);
+  echo '<p dir="rtl" style="font:16px Tahoma">' . (!empty($r['ok']) ? '✅ ربات وصل شد. در گروه /menu بزنید.' : '❌ وصل نشد: ' . tg_h($r['description'] ?? 'اتصال به تلگرام برقرار نشد')) . '</p>'; exit;
+}
+// one-line notification to the team chat when something worth knowing changes
+function tg_notify_change($c, $id, $old, $new) {
+  global $CONFIG;
+  if ($CONFIG['telegram_token'] === '' || empty($CONFIG['telegram_notify']) || !($chat = tg_chats()[0] ?? '')) return;
+  try {
+    $all = tg_all(); $t = '';
+    if ($c === 'accounts' && $new && tg_st($new) === 'active' && (!$old || !in_array(tg_st($old), ['active', 'check'], true))) {
+      $t = tg_flag($new['portal']) . ' اکانت جدید ' . tg_cname($new['portal']) . ': ' . tg_acc_line($all, $new + ['id' => $id]);
+    } elseif ($c === 'people' && $new) {
+      $acc = $all['accounts'][$new['accountId'] ?? ''] ?? null; $pc = $new['portal'] ?? '';
+      if (!$old) $t = '👤 ' . tg_flag($pc) . ' <b>' . tg_h($new['name'] ?? '') . '</b> اضافه شد' . ($acc ? "\n" . tg_acc_line($all, $acc + ['id' => $new['accountId']]) : '');
+      elseif (($new['status'] ?? '') === 'booked' && ($old['status'] ?? '') !== 'booked') $t = '📅 ' . tg_flag($pc) . ' وقت گرفته شد: <b>' . tg_h($new['name'] ?? '') . '</b> · ' . tg_h(trim(($new['apptDate'] ?? '') . ' ' . ($new['apptTime'] ?? '')));
+      elseif (in_array($new['status'] ?? '', ['removed', 'done'], true) && !in_array($old['status'] ?? '', ['removed', 'done'], true) && $acc) $t = '🟢 ' . tg_flag($pc) . ' یک جا آزاد شد' . "\n" . tg_acc_line($all, $acc + ['id' => $new['accountId']]);
+    }
+    if ($t !== '') tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML', 'disable_notification' => false]);
+  } catch (Throwable $e) {}
+}
+
 // ---------- API ----------
 if (isset($_GET['api'])) {
   if (!$authed) fail('login', 'unauthenticated', 401);
@@ -221,12 +346,13 @@ if (isset($_GET['api'])) {
       case 'set':
         $b = body(); $c = vcol($b['col'] ?? ''); $i = vid($b['id'] ?? '');
         if (!is_array($b['data'] ?? null)) fail('bad data');
-        putdoc($c, $i, $b['data']); json_out(['ok' => 1]);
+        $old = in_array($c, ['accounts', 'people'], true) ? getdoc($c, $i) : null;
+        putdoc($c, $i, $b['data']); if ($old !== null || in_array($c, ['accounts', 'people'], true)) tg_notify_change($c, $i, $old, $b['data']); json_out(['ok' => 1]);
       case 'update':
         $b = body(); $c = vcol($b['col'] ?? ''); $i = vid($b['id'] ?? '');
         if (!is_array($b['data'] ?? null)) fail('bad data');
         $cur = getdoc($c, $i); if ($cur === null) fail('not found');
-        $new = array_merge($cur, $b['data']); putdoc($c, $i, $new); json_out(['ok' => 1, 'doc' => $new]);
+        $new = array_merge($cur, $b['data']); putdoc($c, $i, $new); tg_notify_change($c, $i, $cur, $new); json_out(['ok' => 1, 'doc' => $new]);
       case 'delete':
         $b = body(); $c = vcol($b['col'] ?? ''); $i = vid($b['id'] ?? '');
         if (in_array($c, ['sims', 'emails'], true) && ($b['confirm'] ?? '') !== 'CONFIRMED:' . $i) fail('حذف شماره یا ایمیل فقط با تأیید صریح انجام می‌شود', 'invalid_argument', 403);
