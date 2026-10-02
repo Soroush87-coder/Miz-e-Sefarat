@@ -13,7 +13,7 @@ $CONFIG = [
   'model'             => 'claude-sonnet-5-5',  // مدلی که پاسپورت را می‌خواند
   'keep_days'         => 30,                   // پاسپورت‌ها چند روز بعد از آپلود پاک شوند
   'telegram_token'    => '',                   // اختیاری: توکن ربات تلگرام از @BotFather
-  'telegram_chat'     => '',                   // شناسه گروه/چت‌های مجاز، با ویرگول (ربات خودش شناسه را می‌گوید)
+  'telegram_chat'     => '',                   // شناسه چت هر نفر (یا گروه)، با ویرگول، مثلاً '111,222'. ربات خودش شناسه را می‌گوید
   'telegram_notify'   => true,                 // نوتیف خودکار در گروه (اکانت جدید، مسافر، وقت)
 ];
 // ==========================================================================
@@ -315,7 +315,7 @@ function tg_setup() {
 // one-line notification to the team chat when something worth knowing changes
 function tg_notify_change($c, $id, $old, $new) {
   global $CONFIG;
-  if ($CONFIG['telegram_token'] === '' || empty($CONFIG['telegram_notify']) || !($chat = tg_chats()[0] ?? '')) return;
+  if ($CONFIG['telegram_token'] === '' || empty($CONFIG['telegram_notify']) || !tg_chats()) return;
   try {
     $all = tg_all(); $t = '';
     if ($c === 'accounts' && $new && tg_st($new) === 'active' && (!$old || !in_array(tg_st($old), ['active', 'check'], true))) {
@@ -326,7 +326,7 @@ function tg_notify_change($c, $id, $old, $new) {
       elseif (($new['status'] ?? '') === 'booked' && ($old['status'] ?? '') !== 'booked') $t = '📅 ' . tg_flag($pc) . ' وقت گرفته شد: <b>' . tg_h($new['name'] ?? '') . '</b> · ' . tg_h(trim(($new['apptDate'] ?? '') . ' ' . ($new['apptTime'] ?? '')));
       elseif (in_array($new['status'] ?? '', ['removed', 'done'], true) && !in_array($old['status'] ?? '', ['removed', 'done'], true) && $acc) $t = '🟢 ' . tg_flag($pc) . ' یک جا آزاد شد' . "\n" . tg_acc_line($all, $acc + ['id' => $new['accountId']]);
     }
-    if ($t !== '') tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML', 'disable_notification' => false]);
+    if ($t !== '') foreach (tg_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
   } catch (Throwable $e) {}
 }
 
