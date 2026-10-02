@@ -1140,6 +1140,17 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
   --red-soft:#3d1a21;--green-soft:#10342a;--red-ink:#ff8d98;--green-ink:#4fd6a5;--amber-ink:#f5c35a;--nv:#1c2c4e;--nv-2:#28406f;
   --wash1:#13254a;--wash2:#26173d;--frame:rgba(255,255,255,.06);--cloud:#2b4a80;--hero-base:#162c52;--hero-sky:linear-gradient(120deg,#183463 0%,#1d3b6c 45%,#16304a 80%,#132638 100%);--hero-ink:#e6ebf7;--hero-sub:#9fb0d6;--sh-1:0 1px 2px rgba(0,0,0,.3),0 4px 10px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35);
   --sh-3:0 4px 8px rgba(0,0,0,.35),0 20px 44px rgba(0,0,0,.45);--shadow:var(--sh-2)}
+.theme-sw{display:flex;align-items:center;gap:10px;width:100%;margin-top:auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-md);padding:10px 12px;font:inherit;font-weight:700;cursor:pointer;text-align:right;transition:border-color var(--dur) var(--ease)}
+.theme-sw:hover{border-color:var(--line-strong)}
+.theme-sw + .side-foot{margin-top:0}
+@media (max-width:900px){.theme-sw{display:none}}
+.ts-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--soft);font-size:15px;flex:none}
+.ts-t{flex:1}
+.ts-k{position:relative;width:42px;height:24px;border-radius:var(--r-pill);background:var(--line-strong);flex:none;transition:background var(--dur) var(--ease)}
+.ts-k i{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform var(--dur) var(--ease)}
+.theme-sw[aria-checked="true"] .ts-k{background:var(--accent)}
+.theme-sw[aria-checked="true"] .ts-k i{transform:translateX(-18px)}
+.theme-sw[aria-checked="true"] .ts-ic{background:var(--nv);}
 .theme-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-pill);width:34px;height:34px;display:grid;place-items:center;cursor:pointer;font-size:16px;padding:0}
 </style>
 </head><body>
@@ -1155,7 +1166,8 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
     <button class="tab" role="tab" data-tab="res" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>ایمیل و شماره</button>
     <button class="tab" role="tab" data-tab="people" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.3 3.3 0 0 1 0 6.5M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></svg>مسافران<span class="n" id="nPeople"></span></button>
   </nav>
-  <div class="side-foot"><button class="theme-btn" type="button" data-act="theme" aria-label="حالت شب / روز">🌙</button><a href="?api=backup" style="color:var(--accent);font-weight:700">دانلود بک‌آپ</a><a href="?logout=1" style="color:#d8394a;font-weight:700">خروج</a></div>
+  <button class="theme-sw" type="button" data-act="theme" role="switch" aria-checked="false"><span class="ts-ic" aria-hidden="true">🌙</span><span class="ts-t">حالت شب</span><span class="ts-k" aria-hidden="true"><i></i></span></button>
+  <div class="side-foot"><a href="?api=backup" style="color:var(--accent);font-weight:700">دانلود بک‌آپ</a><a href="?logout=1" style="color:#d8394a;font-weight:700">خروج</a></div>
 </aside>
 <div class="main"><div class="mtop"><div class="brand"><i></i><span>میز وقت سفارت</span></div><div class="links"><button class="theme-btn" type="button" data-act="theme" aria-label="حالت شب / روز">🌙</button><a href="?api=backup" style="color:var(--accent)">بک‌آپ</a><a href="?logout=1" style="color:#d8394a">خروج</a></div></div><div class="wrap">
   <div id="banner" class="banner" hidden></div>
@@ -1350,7 +1362,12 @@ function countryStats(pc){
 
 // ---------- rendering ----------
 let lastView = "";
+const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
+function syncTheme(){ const d = isDark();
+  document.querySelectorAll(".theme-sw").forEach(b => b.setAttribute("aria-checked", String(d)));
+  document.querySelectorAll(".theme-btn").forEach(b => { b.textContent = d ? "☀️" : "🌙"; b.setAttribute("aria-label", d ? "حالت روز" : "حالت شب"); }); }
 function render(){
+  syncTheme();
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   const live = S.people.filter(p => p.status === "waitlist" || p.status === "booked").length;
   $("#nPeople").textContent = live ? faN(live) : "";
@@ -2349,8 +2366,7 @@ document.addEventListener("click", e => {
   if (a === "open"){ country = id; lsSet("country3", id); render(); window.scrollTo({top:0}); return; }
   if (a === "back"){ country = ""; lsSet("country3", ""); render(); return; }
   if (a === "export") return exportCSV();
-  if (a === "theme"){ const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-    r.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("theme", r.dataset.theme); } catch {} return; }
+  if (a === "theme"){ document.documentElement.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {} syncTheme(); return; }
   if (a === "readappt") return apptReadSheet();
   if (a === "resopen") return openRes(b.dataset.kind, id);
   if (a === "accdel"){ const acc = S.accounts.get(id); if (!acc || !canWrite) return; const occ = occupants(id); closeSheet();
