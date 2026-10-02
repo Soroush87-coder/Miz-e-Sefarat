@@ -1697,8 +1697,8 @@ function renderRes(){
   // 1) country map: which email + which phone on each country
   const map = portalsList().map(p => {
     const accs = liveAccs.filter(a => a.portal === p.code).sort((x,y) => x.emailId.localeCompare(y.emailId));
-    const orphan = [...S.sims.values()].filter(m => phoneOn(p.code, m.code).kind === "orphan");
-    if (!accs.length && !orphan.length) return "";
+    const orphan = [];   // phones VFS reported as taken are listed in the phone table, not here
+    if (!accs.length) return "";
     const rows = accs.map(a => { const e = S.emails.get(a.emailId), m = a.simId ? S.sims.get(a.simId) : null, n = occupants(a.id).length;
       return `<button type="button" class="rs-pair" data-act="acc" data-id="${esc(a.id)}"><span class="rs-dot st-${accStatus(a)}"></span>
         <span class="rs-e mono">${esc(e?.address || a.emailId)}</span><span class="rs-link">+</span>
@@ -1718,7 +1718,7 @@ function renderRes(){
   const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
   const sRows = sims.map(m => {
     const accs = liveAccs.filter(a => a.simId === m.code), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
-    const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => chip(p.code, "reg", "تکراری")).join("")}</div>` : none;
+    const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="این شماره دیگر برای ${esc(pName(p.code))} ثبت‌شده حساب نشود">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><span>ثبت‌شده در VFS</span><small>×</small></button>`).join("")}</div>` : none;
     return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><span class="mono">${esc(prettyPhone(m.number))}</span>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
   const eRows = ems.map(e => {
     const accs = liveAccs.filter(a => a.emailId === e.code);
@@ -2306,6 +2306,7 @@ document.addEventListener("click", e => {
   if (a === "accdel"){ const acc = S.accounts.get(id); if (!acc || !canWrite) return; const occ = occupants(id); closeSheet();
     return undoable(async () => {
       for (const p of occ) await write(() => db.doc("people/" + p.id).update({status:"removed", doneAt:today(), note:[p.note, "اکانت حذف شد"].filter(Boolean).join(" · ")}));
+      if (acc.simId) await setReg(acc.portal, acc.simId, "unknown");
       if (await write(() => db.doc("accounts/" + id).delete())) { await addLog("edit", acc.portal, {emailId:acc.emailId, simId:acc.simId || "", note:"اکانت حذف شد"});
         toast(`اکانت ${pName(acc.portal)} حذف شد${occ.length ? ` · ${faN(occ.length)} مسافرش «اتمام کار» شد` : ""}`); }
     }); }
