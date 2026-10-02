@@ -250,7 +250,27 @@ function tg_view($key) {
   // Simple menu: countries → that country's accounts (email · phone · free places) → the travellers on one account
   if ($key === 'm' || $key === 'c' || $key === 'f') {
     $rows = []; foreach (tg_portals($all) as $pc) $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc), 'callback_data' => 'c:' . $pc];
-    return ['🌍 <b>کدام کشور؟</b>', array_chunk($rows, 3)];
+    $kb = array_chunk($rows, 3); $kb[] = [['text' => '✨ اکانت پیشنهادی', 'callback_data' => 'n']];
+    return ['🌍 <b>کدام کشور؟</b>', $kb];
+  }
+  // suggested new accounts: free email + free phone pairs for one country (same pairing as the site's planner)
+  if ($key === 'n') {
+    $rows = []; foreach (tg_portals($all) as $pc) $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc), 'callback_data' => 'n:' . $pc];
+    $kb = array_chunk($rows, 3); $kb[] = [['text' => '← کشورها', 'callback_data' => 'm']];
+    return ['✨ <b>اکانت پیشنهادی برای کدام کشور؟</b>', $kb];
+  }
+  if (preg_match('/^n:([A-Z]{2})$/', $key, $m)) {
+    $pc = $m[1]; $live = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc);
+    $fe = []; foreach ($all['emails'] ?? [] as $e) { if (($e['status'] ?? '') === 'inactive') continue; if (in_array(tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null), ['unused', 'none'], true)) $fe[] = $e; }
+    $fs = []; foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $busy = false; foreach ($live as $a) if (($a['simId'] ?? '') === $sm['id']) $busy = true;
+      if (!$busy && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') !== 'registered') $fs[] = $sm; }
+    usort($fe, fn($a, $b) => strcmp($a['id'], $b['id'])); usort($fs, fn($a, $b) => strcmp($a['id'], $b['id']));
+    $n = min(4, count($fe), count($fs)); $lines = [];
+    for ($i = 0; $i < $n; $i++) $lines[] = tg_fa($i + 1) . ") 📧 <code>" . tg_h($fe[$i]['address']) . "</code>\n    📱 <code>" . tg_h(tg_phone($fs[$i]['number'])) . '</code>';
+    $room = 0; foreach ($live as $a) if (tg_st($a) === 'active' && tg_occ($all, $a['id']) < TG_CAP) $room++;
+    $t = '✨ <b>اکانت پیشنهادی · ' . tg_flag($pc) . ' ' . tg_cname($pc) . "</b>\n" . ($room ? '🟢 ' . tg_fa($room) . " اکانت موجود هنوز جای خالی دارد\n" : '') . "\n"
+      . ($lines ? implode("\n\n", $lines) : '— ' . (!$fe ? 'ایمیل آزاد' : 'شماره آزاد') . ' برای ' . tg_cname($pc) . ' نمانده؛ در سایت اضافه کنید');
+    return [$t, [[['text' => '← کشورها', 'callback_data' => 'n'], ['text' => 'اکانت‌های ' . tg_cname($pc), 'callback_data' => 'c:' . $pc]]]];
   }
   if (preg_match('/^c:([A-Z]{2})$/', $key, $m)) {
     $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $kb = [];
