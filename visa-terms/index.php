@@ -842,7 +842,7 @@ function render() {
   const navBack = `<button class="btn alt" data-go="${step - 1}" type="button">${t('back')}</button>`;
   if (step === 1) {
     v.innerHTML = `<h1>${t('w_title')}</h1><p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>Dubai Licence No. ${esc(BOOT.company.licence)}</span></p>
-      <p class="ctr muted">${t('w_intro')}</p><div class="msg info">${esc(t('w_priv'))}</div><p class="muted mt">${t('w_note')}</p>
+      <p class="ctr muted">${t('w_intro')}</p><p class="muted mt">${t('w_note')}</p>
       <button class="btn" data-go="2" type="button">${t('start')}</button>`;
   } else if (step === 2) {
     const sc = S.scan, back = sc && sc.needs_back;
