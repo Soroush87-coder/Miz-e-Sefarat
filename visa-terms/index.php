@@ -21,7 +21,7 @@ $CONFIG = [
   'smtp_user'      => '',            // usually the full mailbox address
   'smtp_pass'      => '',
   'mail_from'      => '',            // sender address (normally same as smtp_user)
-  'company_email'  => '',            // where signed agreements are sent
+  'company_email'  => '',            // where signed agreements are sent; several: 'a@x.com, b@y.com'
 
   // Private folder for temporary files. Leave empty = automatic, outside public_html.
   'private_dir'    => '',
@@ -193,6 +193,9 @@ function is_https() {
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
     || (($_SERVER['SERVER_PORT'] ?? '') == 443);
 }
+function company_recipients($CONFIG) {
+  return array_values(array_filter(array_map('trim', explode(',', (string)$CONFIG['company_email'])), 'strlen'));
+}
 function setup_problems($P, $CONFIG, $LIBS) {
   $p = [];
   if (PHP_VERSION_ID < 70400) $p[] = 'نسخه PHP باید 7.4 یا بالاتر باشد.';
@@ -204,7 +207,10 @@ function setup_problems($P, $CONFIG, $LIBS) {
   elseif (!install_libs($P, $LIBS)) $p[] = 'کتابخانه‌های PDF و ایمیل دانلود نشدند (اتصال هاست به GitHub). صفحه را دوباره باز کنید یا راهنما را ببینید.';
   if (!preg_match('/^sk-ant-/', $CONFIG['anthropic_api_key'])) $p[] = 'کلید anthropic_api_key تنظیم نشده است.';
   foreach (['smtp_host', 'smtp_user', 'smtp_pass'] as $k) if ($CONFIG[$k] === '') $p[] = "تنظیم $k خالی است.";
-  foreach (['mail_from', 'company_email'] as $k) if (!filter_var($CONFIG[$k], FILTER_VALIDATE_EMAIL)) $p[] = "تنظیم $k یک ایمیل معتبر نیست.";
+  if (!filter_var($CONFIG['mail_from'], FILTER_VALIDATE_EMAIL)) $p[] = 'تنظیم mail_from یک ایمیل معتبر نیست.';
+  $rcpt = company_recipients($CONFIG);
+  if (!$rcpt || count($rcpt) !== count(array_filter($rcpt, function ($e) { return filter_var($e, FILTER_VALIDATE_EMAIL); })))
+    $p[] = 'تنظیم company_email ایمیل معتبر ندارد (چند ایمیل را با کاما جدا کنید).';
   return $p;
 }
 
@@ -494,7 +500,7 @@ function send_company_email(&$sub) {
     $m->Timeout = 20;
     $m->CharSet = 'UTF-8';
     $m->setFrom($CONFIG['mail_from'], $COMPANY['brand'] . ' Agreements');
-    $m->addAddress($CONFIG['company_email']);
+    foreach (company_recipients($CONFIG) as $to) $m->addAddress($to);
     $c = $sub['snap']['customer'];
     $m->Subject = 'Signed visa service terms ' . $sub['id'] . ' — ' . $c['name'];
     $m->Body = "A customer signed the visa service terms.\n\nTracking No.: {$sub['id']}\nSubmitted: {$sub['snap']['time_label']}\n"
