@@ -667,49 +667,59 @@ $BOOT = [
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Travel Market — Visa Service Terms</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%235046e5%22/%3E%3Cpath%20d%3D%22M9.5%2016.5l4.5%204.5%208.5-9.5%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<meta name="theme-color" content="#f6f3ff">
 <style nonce="<?= $NONCE ?>">
-:root{--bg:#f4f7fa;--card:#fff;--ink:#13294b;--muted:#5b6b82;--teal:#0f8f84;--teal-d:#0b746b;--line:#dbe3ec;--err:#b42318;--ok:#067647}
+:root{--card:#fff;--ink:#1e1b3a;--muted:#6b6880;--teal:#5046e5;--teal-d:#4338ca;--line:#e4e3f0;--err:#c0262d;--ok:#067647;--soft:#f4f3ff}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,"Geeza Pro",sans-serif;-webkit-text-size-adjust:100%}
-.wrap{max-width:560px;margin:0 auto;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
-header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0 10px}
-.brand b{display:block;font-size:17px}.brand small{color:var(--muted);font-size:12px}
-.lang{background:none;border:1px solid var(--line);border-radius:20px;padding:6px 14px;color:var(--ink);font:inherit;font-size:14px}
-.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:6px}.bar i{display:block;height:100%;background:var(--teal);width:0}
-.stepno{font-size:13px;color:var(--muted);margin-bottom:10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
-h1{font-size:21px;margin:0 0 8px}h2{font-size:18px;margin:0 0 10px}p{margin:0 0 12px}
+html{background:#f6f3ff}
+body{margin:0;min-height:100vh;color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Tahoma,"Geeza Pro",sans-serif;-webkit-text-size-adjust:100%;
+ background:radial-gradient(60% 45% at 0% 0%,#c9a5ff 0%,rgba(201,165,255,0) 70%),radial-gradient(55% 45% at 100% 8%,#ffc6dc 0%,rgba(255,198,220,0) 70%),radial-gradient(50% 40% at 8% 92%,#ffb3c7 0%,rgba(255,179,199,0) 70%),radial-gradient(60% 50% at 100% 100%,#b9c8ff 0%,rgba(185,200,255,0) 70%),#fbf8ff;background-attachment:fixed}
+.wrap{max-width:460px;margin:0 auto;padding:22px 16px calc(32px + env(safe-area-inset-bottom))}
+header{position:relative;text-align:center;padding:14px 0 20px}
+.logo{display:inline-flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--ink)}
+.logo svg{width:34px;height:34px;flex:none}
+.brand small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.lang{position:absolute;top:0;inset-inline-end:0;background:rgba(255,255,255,.75);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.card{background:var(--card);border-radius:22px;padding:26px 22px;box-shadow:0 24px 60px rgba(80,70,229,.12),0 2px 8px rgba(30,27,58,.05)}
+.bar{height:5px;background:#eceaf7;border-radius:999px;overflow:hidden;margin-bottom:8px}.bar i{display:block;height:100%;background:var(--teal);border-radius:999px;width:0}
+.stepno{font-size:12px;color:var(--muted);text-align:center;margin-bottom:18px}
+h1,h2{text-align:center;letter-spacing:-.3px}h1{font-size:24px;margin:0 0 8px}h2{font-size:21px;margin:0 0 12px}p{margin:0 0 12px}
 .muted{color:var(--muted);font-size:14px}
-.btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:600;background:var(--teal);color:#fff;margin-top:10px;cursor:pointer}
-.btn:active{background:var(--teal-d)}.btn[disabled]{opacity:.45}
-.btn.alt{background:#fff;color:var(--teal-d);border:1.5px solid var(--teal)}
-.nav{display:flex;gap:10px;margin-top:14px}.nav .btn{margin-top:0}
-label.f{display:block;font-size:14px;font-weight:600;margin:12px 0 4px}
-input[type=text],input[type=email],input[type=tel],input[type=date]{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit;color:var(--ink);background:#fff}
-.hint{font-size:12px;color:var(--muted);margin-top:3px}
-.chk{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:10px;margin-top:12px}
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:13px 18px;font:inherit;font-size:15px;font-weight:600;background:var(--teal);color:#fff;margin-top:12px;cursor:pointer}
+.btn:active{background:var(--teal-d)}.btn[disabled]{opacity:.4}
+.btn.alt{background:#fff;color:var(--teal);border:1.5px solid var(--line)}
+.nav{display:flex;gap:10px;margin-top:16px}.nav .btn{margin-top:0}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:14px 4px 6px}
+input[type=text],input[type=email],input[type=tel],input[type=date]{width:100%;padding:13px 18px;border:1px solid var(--line);border-radius:999px;font:inherit;font-size:15px;color:var(--ink);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(80,70,229,.12)}
+.hint{font-size:12px;color:var(--muted);margin:4px 6px 0}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:16px;margin-top:14px;font-size:15px}
 .chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--teal)}
-.msg{padding:10px 12px;border-radius:10px;font-size:14px;margin-top:12px}.msg.err{background:#fef3f2;color:var(--err)}.msg.ok{background:#ecfdf3;color:var(--ok)}.msg.info{background:#eef6fb}
+.msg{padding:12px 14px;border-radius:14px;font-size:14px;margin-top:12px}.msg.err{background:#fff1f2;color:var(--err)}.msg.ok{background:#ecfdf3;color:var(--ok)}.msg.info{background:var(--soft)}
 .hide{display:none!important}
 label.btn,label.link{position:relative;text-align:center;display:block}.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
-dl{margin:0}dt{font-size:12px;color:var(--muted)}dd{margin:0 0 8px;font-weight:600;word-break:break-word}
-.agree{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;background:#fafcfd}
+dl{margin:0;background:var(--soft);border-radius:16px;padding:14px 16px}dt{font-size:12px;color:var(--muted)}dd{margin:0 0 8px;font-weight:600;word-break:break-word}
+.agree{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:14px;font-size:14px;background:#fcfcff}
 .agree h3{font-size:15px;margin:10px 0 4px}
-canvas{display:block;width:100%;height:180px;border:1.5px dashed var(--teal);border-radius:10px;background:#fff;touch-action:none}
-.link{background:none;border:0;color:var(--teal-d);font:inherit;font-size:14px;text-decoration:underline;padding:6px 0;cursor:pointer}
+canvas{display:block;width:100%;height:180px;border:1.5px dashed #c7c3f5;border-radius:16px;background:#fff;touch-action:none}
+.link{background:none;border:0;color:var(--teal);font:inherit;font-size:14px;font-weight:500;text-decoration:none;padding:8px 0;cursor:pointer}
 .mt{margin-top:12px}.bad{border-color:var(--err)!important}.th{margin:0 0 6px;font-size:17px}.sh{font-size:15px}a.btn{text-align:center;text-decoration:none}
-.big{font-size:20px;font-weight:700;letter-spacing:.5px}
+.ctr{text-align:center}
+.big{font-size:22px;font-weight:700;letter-spacing:.5px;text-align:center}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><b>Travel Market</b><small id="legal">SOUQ AL SAFAR TOURISM L.L.C</small></div>
     <button class="lang" id="langBtn" type="button">العربية</button>
+    <div class="brand"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c6cf5"/><stop offset="1" stop-color="#5046e5"/></linearGradient></defs><rect x="3" y="3" width="26" height="26" rx="8" fill="none" stroke="url(#lg)" stroke-width="3"/><path d="M10.5 16.5l4 4 7-8" fill="none" stroke="url(#lg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Travel Market</span><small id="legal">SOUQ AL SAFAR TOURISM L.L.C</small></div>
   </header>
-  <div class="bar"><i id="barFill"></i></div>
-  <div class="stepno" id="stepNo"></div>
-  <main class="card" id="view"></main>
+  <div class="card">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="stepno" id="stepNo"></div>
+    <main id="view"></main>
+  </div>
 </div>
 <script nonce="<?= $NONCE ?>">
 const BOOT = <?= json_encode($BOOT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -817,8 +827,8 @@ function render() {
   const M = msg ? `<div class="msg ${msg.type}" role="alert">${esc(msg.text)}</div>` : '';
   const navBack = `<button class="btn alt" data-go="${step - 1}" type="button">${t('back')}</button>`;
   if (step === 1) {
-    v.innerHTML = `<h1>${t('w_title')}</h1><p><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)} · Dubai Licence No. ${esc(BOOT.company.licence)}</span></p>
-      <p>${t('w_intro')}</p><div class="msg info">${esc(t('w_priv'))}</div><p class="muted mt">${t('w_note')}</p>
+    v.innerHTML = `<h1>${t('w_title')}</h1><p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>Dubai Licence No. ${esc(BOOT.company.licence)}</span></p>
+      <p class="ctr muted">${t('w_intro')}</p><div class="msg info">${esc(t('w_priv'))}</div><p class="muted mt">${t('w_note')}</p>
       <button class="btn" data-go="2" type="button">${t('start')}</button>`;
   } else if (step === 2) {
     const sc = S.scan, back = sc && sc.needs_back;
