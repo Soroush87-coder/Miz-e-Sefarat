@@ -332,8 +332,9 @@ function claude_read_card($imgBytes, $mime, $side) {
       'expiry_date'    => ['type' => 'string'],
     ],
   ];
-  $system = "You read UAE Emirates ID cards to pre-fill a form. Work only from what is visibly printed in the image.\n"
-    . "- is_emirates_id: true only if the image shows a UAE Emirates ID card (front or back).\n"
+  $system = "You read UAE Emirates ID cards to pre-fill a form. Work only from what is visibly printed in the image or PDF.\n"
+    . "- If a PDF shows both sides of the card, read the fields from both sides.\n"
+    . "- is_emirates_id: true only if the image or PDF shows a UAE Emirates ID card (front or back).\n"
     . "- side: which side is shown. The back usually has a machine-readable zone (MRZ).\n"
     . "- readable: false if the card is blurred, cut off, covered by glare, or too small to read.\n"
     . "- full_name: the holder's name in English exactly as printed (or from the MRZ on the back, with '<' replaced by spaces).\n"
@@ -349,7 +350,10 @@ function claude_read_card($imgBytes, $mime, $side) {
     'messages' => [[
       'role' => 'user',
       'content' => [
-        ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($imgBytes)]],
+        [
+          'type' => $mime === 'application/pdf' ? 'document' : 'image',
+          'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($imgBytes)],
+        ],
         ['type' => 'text', 'text' => "The customer says this is the $side of their Emirates ID. Extract the fields."],
       ],
     ]],
@@ -542,8 +546,12 @@ if ($a !== '') {
     $info = @getimagesize($tmp);
     $fmime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
     $types = [IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_PNG => 'image/png', IMAGETYPE_WEBP => 'image/webp'];
-    if ($size < 3000 || $size > 8 * 1024 * 1024 || !$info || !isset($types[$info[2]]) || $types[$info[2]] !== $fmime) { @unlink($tmp); fail('bad_image'); }
-    if (min($info[0], $info[1]) < 400 || max($info[0], $info[1]) > 8000) { @unlink($tmp); fail('small_image'); }
+    $isPdf = $fmime === 'application/pdf' && file_get_contents($tmp, false, null, 0, 5) === '%PDF-';
+    if ($size < 3000 || $size > 8 * 1024 * 1024) { @unlink($tmp); fail('bad_image'); }
+    if (!$isPdf) {
+      if (!$info || !isset($types[$info[2]]) || $types[$info[2]] !== $fmime) { @unlink($tmp); fail('bad_image'); }
+      if (min($info[0], $info[1]) < 400 || max($info[0], $info[1]) > 8000) { @unlink($tmp); fail('small_image'); }
+    }
     if (!rate_ok('ocr-s-' . session_id(), 12, 3600) || !rate_ok('ocr-ip-' . client_ip(), 30, 3600)) { @unlink($tmp); fail('rate', 429); }
     $bytes = file_get_contents($tmp);
     @unlink($tmp); // raw card image is never kept on the server
@@ -726,15 +734,15 @@ const BOOT = <?= json_encode($BOOT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON
 const T = {
 en:{lang:'العربية',step:'Step {n} of 6',start:'Start',next:'Next',back:'Back',
  w_title:'Visa service terms',w_intro:'Please review and sign our general visa service terms. It takes about 3 minutes.',
- w_priv:'Before you start: you will take a photo of your Emirates ID. The photo is sent securely to our text-reading service (Anthropic Claude) only to read your name, ID number and expiry date for this agreement. We do not keep the photo — it is deleted from our server right after it is read and is not placed in the agreement. Your confirmed details and signed agreement stay on our server for up to {keep} minutes so you can download them, then they are deleted automatically. A copy is sent to Travel Market by email.',
+ w_priv:'Before you start: you will take a photo of your Emirates ID (or upload a PDF of it). The file is sent securely to our text-reading service (Anthropic Claude) only to read your name, ID number and expiry date for this agreement. We do not keep the photo or file — it is deleted from our server right after it is read and is not placed in the agreement. Your confirmed details and signed agreement stay on our server for up to {keep} minutes so you can download them, then they are deleted automatically. A copy is sent to Travel Market by email.',
  w_note:'Reading the card only fills in your details. It is not an official or government identity check.',
  s_title:'Scan your Emirates ID',s_front:'Take a clear photo of the FRONT of your card. Place it on a flat surface, fill the frame, and avoid glare.',
  s_back:'We could not read everything from the front. Please take a photo of the BACK of your card.',
- s_cam:'Take photo',s_lib:'Choose from gallery',s_wait:'Reading your card…',s_redo:'Scan the front again',
- s_done:'Card read successfully.',
+ s_cam:'Take photo',s_lib:'Choose photo or PDF',s_wait:'Reading your card…',s_redo:'Scan the front again',
+ s_done:'Card read successfully. Please check your details below.',
  e_not_id:'This does not look like an Emirates ID. Please take a new photo of your card.',
  e_unreadable:'The card could not be read clearly. Please take a new, sharper photo without glare.',
- e_bad_image:'Please use a photo (JPEG or PNG) of your card.',e_small_image:'The photo is too small. Please take a closer photo.',
+ e_bad_image:'Please use a photo or a PDF of your card (max 8 MB).',e_small_image:'The photo is too small. Please take a closer photo.',
  e_mismatch:'The back does not match the front of the card. Please photograph the back of the same card.',
  e_service:'Our card-reading service is not responding right now. Please try again.',
  e_rate:'Too many attempts. Please wait a while and try again.',e_upload:'The photo could not be uploaded. Please try again.',
@@ -755,15 +763,15 @@ en:{lang:'العربية',step:'Step {n} of 6',start:'Start',next:'Next',back:'B
  contact_note:'Your mobile and email are recorded as you typed them; they are not verified.'},
 ar:{lang:'English',step:'الخطوة {n} من 6',start:'ابدأ',next:'التالي',back:'السابق',
  w_title:'شروط خدمات التأشيرة',w_intro:'يرجى مراجعة الشروط العامة لخدمات التأشيرة والتوقيع عليها. يستغرق ذلك نحو 3 دقائق.',
- w_priv:'قبل البدء: ستلتقط صورة لبطاقة الهوية الإماراتية. تُرسل الصورة بشكل آمن إلى خدمة قراءة النصوص لدينا (Anthropic Claude) فقط لقراءة الاسم ورقم الهوية وتاريخ الانتهاء لهذه الاتفاقية. لا نحتفظ بالصورة، إذ تُحذف من خادمنا فور قراءتها ولا تُدرج في الاتفاقية. تبقى بياناتك المؤكدة والاتفاقية الموقعة على خادمنا لمدة أقصاها {keep} دقيقة لتتمكن من تنزيلها، ثم تُحذف تلقائياً. وتُرسل نسخة إلى Travel Market عبر البريد الإلكتروني.',
+ w_priv:'قبل البدء: ستلتقط صورة لبطاقة الهوية الإماراتية (أو ترفع ملف PDF لها). يُرسل الملف بشكل آمن إلى خدمة قراءة النصوص لدينا (Anthropic Claude) فقط لقراءة الاسم ورقم الهوية وتاريخ الانتهاء لهذه الاتفاقية. لا نحتفظ بالصورة أو الملف، إذ يُحذف من خادمنا فور قراءته ولا يُدرج في الاتفاقية. تبقى بياناتك المؤكدة والاتفاقية الموقعة على خادمنا لمدة أقصاها {keep} دقيقة لتتمكن من تنزيلها، ثم تُحذف تلقائياً. وتُرسل نسخة إلى Travel Market عبر البريد الإلكتروني.',
  w_note:'قراءة البطاقة تُستخدم فقط لتعبئة بياناتك، وليست تحققاً رسمياً أو حكومياً من الهوية.',
  s_title:'مسح الهوية الإماراتية',s_front:'التقط صورة واضحة لـ الوجه الأمامي من البطاقة. ضعها على سطح مستوٍ، واجعلها تملأ الإطار، وتجنّب الانعكاس.',
  s_back:'لم نتمكن من قراءة جميع البيانات من الوجه الأمامي. يرجى تصوير الوجه الخلفي من البطاقة.',
- s_cam:'التقاط صورة',s_lib:'اختيار من المعرض',s_wait:'جارٍ قراءة البطاقة…',s_redo:'مسح الوجه الأمامي من جديد',
- s_done:'تمت قراءة البطاقة بنجاح.',
+ s_cam:'التقاط صورة',s_lib:'اختيار صورة أو ملف PDF',s_wait:'جارٍ قراءة البطاقة…',s_redo:'مسح الوجه الأمامي من جديد',
+ s_done:'تمت قراءة البطاقة بنجاح. يرجى مراجعة بياناتك أدناه.',
  e_not_id:'لا تبدو هذه الصورة لبطاقة هوية إماراتية. يرجى التقاط صورة جديدة للبطاقة.',
  e_unreadable:'تعذرت قراءة البطاقة بوضوح. يرجى التقاط صورة أوضح بدون انعكاس.',
- e_bad_image:'يرجى استخدام صورة (JPEG أو PNG) للبطاقة.',e_small_image:'الصورة صغيرة جداً. يرجى التقاط صورة أقرب.',
+ e_bad_image:'يرجى استخدام صورة أو ملف PDF للبطاقة (بحد أقصى 8 ميغابايت).',e_small_image:'الصورة صغيرة جداً. يرجى التقاط صورة أقرب.',
  e_mismatch:'الوجه الخلفي لا يطابق الوجه الأمامي. يرجى تصوير الوجه الخلفي للبطاقة نفسها.',
  e_service:'خدمة قراءة البطاقة لا تستجيب حالياً. يرجى المحاولة مرة أخرى.',
  e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',e_upload:'تعذر رفع الصورة. يرجى المحاولة مرة أخرى.',
@@ -836,7 +844,7 @@ function render() {
     v.innerHTML = `<h2>${t('s_title')}</h2>${body}
       ${busy ? `<div class="msg info">${t('s_wait')}</div>` : `
       <label class="btn${sc && sc.ok ? ' alt' : ''}">${t('s_cam')}<input type="file" id="cam" accept="image/*" capture="environment" class="vh"></label>
-      <label class="btn alt">${t('s_lib')}<input type="file" id="lib" accept="image/*" class="vh"></label>
+      <label class="btn alt">${t('s_lib')}<input type="file" id="lib" accept="image/*,application/pdf" class="vh"></label>
       ${back ? `<label class="link">${t('s_redo')}<input type="file" id="redo" accept="image/*" capture="environment" class="vh"></label>` : ''}`}
       ${M}<p class="muted mt">${t('w_note')}</p>
       <div class="nav">${navBack}<button class="btn" data-go="3" type="button" ${sc && sc.ok && !busy ? '' : 'disabled'}>${t('next')}</button></div>`;
@@ -851,10 +859,10 @@ function render() {
       const bad = badFields.includes(k) ? ' class="bad"' : '';
       return `<label class="f" for="f_${k}">${t('d_' + (k === 'expiry' ? 'exp' : k))}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(form[k])}" ${extra}${bad}>${from}`;
     };
-    v.innerHTML = `<h2>${t('d_title')}</h2><p class="muted">${t('d_intro')}</p>
+    v.innerHTML = `<h2>${t('d_title')}</h2>${msg && msg.type === 'ok' ? M : ''}<p class="muted">${t('d_intro')}</p>
       ${fld('name','text','autocomplete="name"')}${fld('eid','text','inputmode="numeric" dir="ltr"')}${fld('expiry','date','dir="ltr"')}
       ${fld('phone','tel','autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}${fld('email','email','autocomplete="email" dir="ltr"')}
-      <p class="hint mt">${t('contact_note')}</p>${M}
+      <p class="hint mt">${t('contact_note')}</p>${msg && msg.type === 'ok' ? '' : M}
       <button class="btn" id="conf" type="button" ${busy ? 'disabled' : ''}>${t('d_btn')}</button>
       <div class="nav">${navBack}</div>`;
     v.querySelectorAll('input').forEach(i => i.oninput = () => { form[i.name] = i.value; });
@@ -923,14 +931,18 @@ async function toJpeg(file) {
 }
 async function scan(file, side) {
   busy = true; msg = null; render();
-  let blob;
-  try { blob = await toJpeg(file); } catch (e) { blob = null; }
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+  let blob = null;
+  if (isPdf) blob = file.size <= 8 * 1024 * 1024 ? file : null;
+  else { try { blob = await toJpeg(file); } catch (e) { blob = null; } }
   if (!blob) { busy = false; msg = {type:'err', text: t('e_bad_image')}; render(); return; }
-  const fd = new FormData(); fd.append('side', side); fd.append('image', blob, 'card.jpg');
+  const fd = new FormData(); fd.append('side', side); fd.append('image', blob, isPdf ? 'card.pdf' : 'card.jpg');
   const r = await api('scan', fd, true);
   busy = false;
-  if (r.ok) { form.name = form.eid = form.expiry = ''; syncForm(); }
-  else msg = {type:'err', text: errText(r.error)};
+  if (r.ok) {
+    form.name = form.eid = form.expiry = ''; syncForm();
+    if (S.scan.ok) { go(3); msg = {type:'ok', text: t('s_done')}; render(); return; }
+  } else msg = {type:'err', text: errText(r.error)};
   render();
 }
 async function saveDetails() {
