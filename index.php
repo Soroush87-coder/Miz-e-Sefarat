@@ -321,7 +321,7 @@ function tg_webhook() {
   $chat = (string)($msg['chat']['id'] ?? ''); if ($chat === '') exit;
   if (!in_array($chat, tg_chats(), true)) {
     if ($cb) tg_api('answerCallbackQuery', ['callback_query_id' => $cb['id']]);
-    else tg_api('sendMessage', ['chat_id' => $chat, 'parse_mode' => 'HTML', 'text' => "این چت هنوز اجازه ندارد.\nشناسه این چت: <code>$chat</code>\nآن را در telegram_chat بالای فایل index.php بگذارید."]);
+    else tg_api('sendMessage', ['chat_id' => $chat, 'parse_mode' => 'HTML', 'text' => "🔒 شما هنوز به این ربات دسترسی ندارید.\n\nاین شناسه را برای مدیر میز سفارت بفرستید:\n<code>$chat</code>\n\n(مدیر: این شناسه را در telegram_chat فایل config.php اضافه کنید.)"]);
     exit;
   }
   try {
