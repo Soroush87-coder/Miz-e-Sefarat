@@ -1157,22 +1157,25 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .accb-o b{background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 12px;font-size:var(--fs-sm)}
 .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
 .accb-o small{font-size:var(--fs-2xs);color:var(--amber)}
-/* country page: calm list — traveller names first, account details muted */
-.accl{gap:0;margin:4px 18px 18px;padding:0;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
-.accl .accb{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;background:transparent;color:var(--ink);border-radius:0;border-bottom:1px solid var(--line);padding:11px 16px}
-.accl .accb:last-child{border-bottom:0}
-.accl .accb:hover{background:var(--soft)}
-.accl .accb-n i{background:var(--amber-soft);color:var(--amber-ink);box-shadow:none;font-weight:700;padding:2px 10px}
-.accl .accb-n em{color:var(--muted)}
-.accl .accb-e{font-size:var(--fs-sm);font-weight:600}
+/* country page: compact card grid — traveller names on top, account details below */
+.accl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;padding:4px 18px 18px}
+.accl .accb{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;position:relative}
+.accl .accb:hover{border-color:var(--line-strong);background:var(--soft)}
+.accl .accb-n{gap:4px;padding-inline-end:44px;min-height:24px}
+.accl .accb-n i{border-radius:var(--r-sm);background:var(--amber-soft);color:var(--amber-ink);box-shadow:none;font-weight:700;font-size:var(--fs-xs);padding:2px 9px}
+.accl .accb-n em{color:var(--muted);font-size:var(--fs-xs)}
+.accl .accb-c{border-top:1px dashed var(--line);padding-top:6px}
+.accl .accb-e{font-size:var(--fs-xs);font-weight:600}
 .accl .accb-p{font-size:var(--fs-xs);color:var(--muted);opacity:1}
-.accl .accb-o b{background:var(--soft);color:var(--muted);font-weight:700}
+.accl .accb-o{position:absolute;top:10px;inset-inline-end:10px;flex-direction:row;gap:4px}
+.accl .accb-o b{background:var(--soft);color:var(--muted);font-weight:700;font-size:var(--fs-2xs);padding:1px 8px}
 .accl .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
+.accl .accb-o small{font-size:0}.accl .accb-o small::before{content:"⚠";font-size:var(--fs-xs)}
 .cstats{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:var(--fs-sm);font-weight:700;opacity:.95}
 .cstats span{display:flex;align-items:baseline;gap:5px}
 .cstats b{font-size:var(--fs-lg);font-weight:800;font-variant-numeric:tabular-nums}
 .cstats .warn{background:rgba(255,255,255,.2);border-radius:var(--r-pill);padding:0 10px}
-@media (max-width:640px){.accb{grid-template-columns:1fr auto}.accb-n{grid-column:1/-1;grid-row:2}.accl .accb-n{grid-row:1}.accl .accb-c{grid-row:2;grid-column:1}}
+@media (max-width:640px){.accb{grid-template-columns:1fr auto}.accb-n{grid-column:1/-1;grid-row:2}.accl{grid-template-columns:minmax(0,1fr);gap:8px;padding:4px 12px 14px}}
 .res-open{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .res-big{display:flex;align-items:center;gap:10px;font-size:var(--fs-xl);font-weight:800;color:var(--nv);direction:ltr;justify-content:flex-end}
 .res-acc{display:flex;flex-direction:column;gap:6px;background:var(--nv);color:#fff;border-radius:var(--r-lg);padding:14px 16px}
