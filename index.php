@@ -243,47 +243,54 @@ function tg_bar($n) { return str_repeat('▰', min($n, TG_CAP)) . str_repeat('�
 // live accounts whose email still exists in the desk (accounts of deleted/inactive emails are ignored)
 function tg_live($all) { return array_filter($all['accounts'] ?? [], fn($a) => in_array(tg_st($a), ['active', 'check'], true) && isset($all['emails'][$a['emailId'] ?? '']) && ($all['emails'][$a['emailId']]['status'] ?? '') !== 'inactive'); }
 function tg_portals($all) { $p = $all['portals'] ?? []; uasort($p, fn($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99)); return array_keys($p); }
-function tg_acc_line($all, $a) {
-  $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $m = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره';
-  $n = tg_occ($all, $a['id']);
-  return '<code>' . tg_h($e) . '</code> + <code>' . tg_h($m) . '</code>' . "\n   " . tg_bar($n) . ' ' . tg_fa($n) . '/' . tg_fa(TG_CAP) . ($n >= TG_CAP ? ' (پر)' : '') . (tg_st($a) === 'check' ? ' · ⚠ چک شود' : '');
+// each traveller keeps its own phone; on one country an email and a phone are each usable TG_CAP times, independently
+function tg_psim($all, $p) { return ($p['simId'] ?? '') !== '' ? $p['simId'] : ($all['accounts'][$p['accountId'] ?? '']['simId'] ?? ''); }
+function tg_livep($all) { return array_filter($all['people'] ?? [], fn($p) => !in_array($p['status'] ?? '', ['removed', 'done'], true)); }
+function tg_uses($all, $pc, $isE, $id) { $n = 0; foreach (tg_livep($all) as $p) if (($p['portal'] ?? '') === $pc && ($isE ? ($p['emailId'] ?? '') : tg_psim($all, $p)) === $id) $n++; return $n; }
+function tg_use($n) { return tg_fa($n) . '/' . tg_fa(TG_CAP) . ($n >= TG_CAP ? ' 🔴' : ''); }
+function tg_pair_line($all, $pc, $em, $sim) {
+  $e = $all['emails'][$em]['address'] ?? $em; $m = $sim !== '' ? tg_phone($all['sims'][$sim]['number'] ?? '') : '';
+  return '📧 <code>' . tg_h($e) . '</code> · ' . tg_use(tg_uses($all, $pc, true, $em)) . "\n" . ($m !== '' ? '📱 <code>' . tg_h($m) . '</code> · ' . tg_use(tg_uses($all, $pc, false, $sim)) : '📱 بدون شماره');
 }
 function tg_view($key) {
   $all = tg_all(); $back = [[['text' => '← منو', 'callback_data' => 'm']]];
   // Simple menu: countries → that country's accounts (email · phone · free places) → the travellers on one account
   if ($key === 'm' || $key === 'c' || $key === 'f') {
     $rows = []; foreach (tg_portals($all) as $pc) $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc), 'callback_data' => 'c:' . $pc];
-    $kb = array_chunk($rows, 3); $kb[] = [['text' => '✨ اکانت پیشنهادی', 'callback_data' => 'n']];
+    $kb = array_chunk($rows, 3); $kb[] = [['text' => '✨ پیشنهاد ایمیل و شماره', 'callback_data' => 'n']];
     return ['🌍 <b>کدام کشور؟</b>', $kb];
   }
   // suggested new accounts: free email + free phone pairs for one country (same pairing as the site's planner)
   if ($key === 'n') {
     $rows = []; foreach (tg_portals($all) as $pc) $rows[] = ['text' => tg_flag($pc) . ' ' . tg_cname($pc), 'callback_data' => 'n:' . $pc];
     $kb = array_chunk($rows, 3); $kb[] = [['text' => '← کشورها', 'callback_data' => 'm']];
-    return ['✨ <b>اکانت پیشنهادی برای کدام کشور؟</b>', $kb];
+    return ['✨ <b>پیشنهاد ایمیل و شماره برای کدام کشور؟</b>', $kb];
   }
   if (preg_match('/^n:([A-Z]{2})$/', $key, $m)) {
-    $pc = $m[1]; $live = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc);
-    $fe = []; foreach ($all['emails'] ?? [] as $e) { if (($e['status'] ?? '') === 'inactive') continue; if (in_array(tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null), ['unused', 'none'], true)) $fe[] = $e; }
-    $fs = []; foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $busy = false; foreach ($live as $a) if (($a['simId'] ?? '') === $sm['id']) $busy = true;
-      if (!$busy && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') !== 'registered') $fs[] = $sm; }
-    usort($fe, fn($a, $b) => strcmp($a['id'], $b['id'])); usort($fs, fn($a, $b) => strcmp($a['id'], $b['id']));
-    $n = min(4, count($fe), count($fs)); $lines = [];
-    for ($i = 0; $i < $n; $i++) $lines[] = tg_fa($i + 1) . ") 📧 <code>" . tg_h($fe[$i]['address']) . "</code>\n    📱 <code>" . tg_h(tg_phone($fs[$i]['number'])) . '</code>';
-    $room = 0; foreach ($live as $a) if (tg_st($a) === 'active' && tg_occ($all, $a['id']) < TG_CAP) $room++;
-    $t = '✨ <b>اکانت پیشنهادی · ' . tg_flag($pc) . ' ' . tg_cname($pc) . "</b>\n" . ($room ? '🟢 ' . tg_fa($room) . " اکانت موجود هنوز جای خالی دارد\n" : '') . "\n"
-      . ($lines ? implode("\n\n", $lines) : '— ' . (!$fe ? 'ایمیل آزاد' : 'شماره آزاد') . ' برای ' . tg_cname($pc) . ' نمانده؛ در سایت اضافه کنید');
-    return [$t, [[['text' => '← کشورها', 'callback_data' => 'n'], ['text' => 'اکانت‌های ' . tg_cname($pc), 'callback_data' => 'c:' . $pc]]]];
+    $pc = $m[1]; $fe = []; $fs = [];
+    foreach ($all['emails'] ?? [] as $e) { if (($e['status'] ?? '') === 'inactive' || tg_st($all['accounts']["{$pc}__{$e['id']}"] ?? null) === 'none') continue; $u = tg_uses($all, $pc, true, $e['id']); if ($u < TG_CAP) $fe[] = [$u, $e['address']]; }
+    foreach ($all['sims'] ?? [] as $sm) { if (($sm['status'] ?? '') === 'inactive') continue; $u = tg_uses($all, $pc, false, $sm['id']);
+      $taken = !$u && ($all['regs']["{$pc}__{$sm['id']}"]['status'] ?? '') === 'registered' && !array_filter(tg_live($all), fn($a) => $a['portal'] === $pc && ($a['simId'] ?? '') === $sm['id']);
+      if ($u < TG_CAP && !$taken) $fs[] = [$u, tg_phone($sm['number'])]; }
+    $ord = fn($a, $b) => $b[0] <=> $a[0] ?: strcmp($a[1], $b[1]); usort($fe, $ord); usort($fs, $ord);   // fill partly used ones first
+    $ln = fn($x) => '• <code>' . tg_h($x[1]) . '</code> · ' . tg_fa(TG_CAP - $x[0]) . ' جای خالی';
+    $t = '✨ <b>پیشنهاد · ' . tg_flag($pc) . ' ' . tg_cname($pc) . "</b>\n(هر ایمیل و هر شماره جدا جدا تا " . tg_fa(TG_CAP) . " بار)\n\n📧 <b>ایمیل</b>\n"
+      . ($fe ? implode("\n", array_map($ln, array_slice($fe, 0, 4))) : '— ایمیل با جای خالی نمانده') . "\n\n📱 <b>شماره</b>\n"
+      . ($fs ? implode("\n", array_map($ln, array_slice($fs, 0, 4))) : '— شماره با جای خالی نمانده');
+    return [$t, [[['text' => '← کشورها', 'callback_data' => 'n'], ['text' => 'مسافرهای ' . tg_cname($pc), 'callback_data' => 'c:' . $pc]]]];
   }
+  // one country: travellers grouped by the email + phone used for them, with each one's own use count
   if (preg_match('/^c:([A-Z]{2})$/', $key, $m)) {
-    $pc = $m[1]; $accs = array_filter(tg_live($all), fn($a) => $a['portal'] === $pc); $kb = [];
-    foreach ($accs as $a) {
-      $e = $all['emails'][$a['emailId']]['address'] ?? $a['emailId']; $ph = !empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : '—';
-      $free = max(0, TG_CAP - tg_occ($all, $a['id']));
-      $kb[] = [['text' => explode('@', $e)[0] . ' · ' . str_replace(' ', '', $ph) . ' · ' . ($free ? tg_fa($free) . ' خالی' : 'پر'), 'callback_data' => 'a:' . $a['id']]];
-    }
-    $kb[] = [['text' => '← کشورها', 'callback_data' => 'm']];
-    return [tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b>' . "\n" . ($accs ? 'روی هر اکانت بزنید تا مسافرهایش را ببینید' : 'هنوز اکانتی ساخته نشده'), $kb];
+    $pc = $m[1]; $g = [];
+    foreach (tg_livep($all) as $p) if (($p['portal'] ?? '') === $pc) $g[($p['emailId'] ?? '') . '|' . tg_psim($all, $p)][] = $p;
+    ksort($g); $blocks = [];
+    foreach ($g as $k => $ps) { [$em, $sim] = explode('|', $k, 2);
+      $names = implode('، ', array_map(fn($p) => '<b>' . tg_h($p['name'] ?? '') . '</b>' . (($p['status'] ?? '') === 'booked' ? ' 📅' . tg_h(substr($p['apptDate'] ?? '', 5)) : ''), $ps));
+      $blocks[] = '👤 ' . $names . "\n" . tg_pair_line($all, $pc, $em, $sim); }
+    $t = tg_flag($pc) . ' <b>' . tg_cname($pc) . '</b> · ' . tg_fa(array_sum(array_map('count', $g))) . " مسافر\n━━━━━━━━━━";
+    $body = ''; foreach ($blocks as $b) { if (mb_strlen($t . $body . $b) > 3800) { $body .= "\n\n…"; break; } $body .= "\n\n" . $b; }   // Telegram limit: cut between blocks, never inside a tag
+    $t .= $blocks ? $body : "\nهنوز مسافری نیست";
+    return [$t, [[['text' => '✨ پیشنهاد ایمیل و شماره', 'callback_data' => 'n:' . $pc]], [['text' => '← کشورها', 'callback_data' => 'm']]]];
   }
   if (preg_match('/^a:([A-Za-z0-9_\-.~:@+]+)$/', $key, $m)) {
     $a = $all['accounts'][$m[1]] ?? null; if (!$a) return ['این اکانت دیگر نیست', [[['text' => '← کشورها', 'callback_data' => 'm']]]];
@@ -302,13 +309,9 @@ function tg_view($key) {
   }
   if (preg_match('/^(e|s):([A-Za-z0-9_\-]+)$/', $key, $m)) {
     $isE = $m[1] === 'e'; $id = $m[2]; $x = $all[$isE ? 'emails' : 'sims'][$id] ?? null; if (!$x) return ['پیدا نشد', $back];
-    $lines = [];
-    foreach (tg_live($all) as $a) if (($isE ? $a['emailId'] : ($a['simId'] ?? '')) === $id) {
-      $n = tg_occ($all, $a['id']); $other = $isE ? (!empty($a['simId']) ? tg_phone($all['sims'][$a['simId']]['number'] ?? '') : 'بدون شماره') : ($all['emails'][$a['emailId']]['address'] ?? '');
-      $lines[] = tg_flag($a['portal']) . ' ' . tg_cname($a['portal']) . ' · <code>' . tg_h($other) . '</code> · ' . tg_fa($n) . '/' . tg_fa(TG_CAP) . ($n >= TG_CAP ? ' (پر)' : '');
-    }
-    if (!$isE) { $dup = []; foreach ($all['regs'] ?? [] as $r) if (($r['simId'] ?? '') === $id && ($r['status'] ?? '') === 'registered') { $has = false; foreach (tg_live($all) as $a) if ($a['portal'] === $r['portal'] && ($a['simId'] ?? '') === $id) $has = true; if (!$has) $dup[] = tg_flag($r['portal']) . ' ' . tg_cname($r['portal']); }
-      if ($dup) $lines[] = '❌ تکراری در VFS: ' . implode('، ', $dup); }
+    $lines = []; $pcs = [];
+    foreach (tg_livep($all) as $p) if (($isE ? ($p['emailId'] ?? '') : tg_psim($all, $p)) === $id) $pcs[$p['portal'] ?? ''] = true;
+    foreach (array_keys($pcs) as $pc) $lines[] = tg_flag($pc) . ' ' . tg_cname($pc) . ' · ' . tg_use(tg_uses($all, $pc, $isE, $id));
     $title = $isE ? '📧 <code>' . tg_h($x['address']) . '</code>' : '📱 <code>' . tg_h(tg_phone($x['number'])) . '</code>';
     return [$title . ' روی ' . tg_fa(count(array_filter($lines, fn($l) => strpos($l, '❌') !== 0))) . " کشور:\n" . ($lines ? implode("\n", $lines) : 'هنوز روی هیچ کشوری نیست'), [[['text' => $isE ? '← ایمیل‌ها' : '← شماره‌ها', 'callback_data' => $m[1]], ['text' => 'منو', 'callback_data' => 'm']]]];
   }
@@ -347,12 +350,12 @@ function tg_notify_change($c, $id, $old, $new) {
   try {
     $all = tg_all(); $t = '';
     if ($c === 'accounts' && $new && tg_st($new) === 'active' && (!$old || !in_array(tg_st($old), ['active', 'check'], true))) {
-      $t = tg_flag($new['portal']) . ' اکانت جدید ' . tg_cname($new['portal']) . ': ' . tg_acc_line($all, $new + ['id' => $id]);
+      $t = tg_flag($new['portal']) . ' اکانت جدید ' . tg_cname($new['portal']) . ': <code>' . tg_h($all['emails'][$new['emailId'] ?? '']['address'] ?? ($new['emailId'] ?? '')) . '</code>';
     } elseif ($c === 'people' && $new) {
-      $acc = $all['accounts'][$new['accountId'] ?? ''] ?? null; $pc = $new['portal'] ?? '';
-      if (!$old) $t = '👤 ' . tg_flag($pc) . ' <b>' . tg_h($new['name'] ?? '') . '</b> اضافه شد' . ($acc ? "\n" . tg_acc_line($all, $acc + ['id' => $new['accountId']]) : '');
+      $pc = $new['portal'] ?? ''; $pair = tg_pair_line($all, $pc, $new['emailId'] ?? '', tg_psim($all, $new));
+      if (!$old) $t = '👤 ' . tg_flag($pc) . ' <b>' . tg_h($new['name'] ?? '') . '</b> اضافه شد' . "\n" . $pair;
       elseif (($new['status'] ?? '') === 'booked' && ($old['status'] ?? '') !== 'booked') $t = '📅 ' . tg_flag($pc) . ' وقت گرفته شد: <b>' . tg_h($new['name'] ?? '') . '</b> · ' . tg_h(trim(($new['apptDate'] ?? '') . ' ' . ($new['apptTime'] ?? '')));
-      elseif (in_array($new['status'] ?? '', ['removed', 'done'], true) && !in_array($old['status'] ?? '', ['removed', 'done'], true) && $acc) $t = '🟢 ' . tg_flag($pc) . ' یک جا آزاد شد' . "\n" . tg_acc_line($all, $acc + ['id' => $new['accountId']]);
+      elseif (in_array($new['status'] ?? '', ['removed', 'done'], true) && !in_array($old['status'] ?? '', ['removed', 'done'], true)) $t = '🟢 ' . tg_flag($pc) . ' یک جا آزاد شد' . "\n" . $pair;
     }
     if ($t !== '') foreach (tg_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
   } catch (Throwable $e) {}
@@ -407,7 +410,7 @@ function migrate_it_2026_10() {
     }
     $acc = "{$pc}__{$em}";
     putdoc('accounts', $acc, ['id' => $acc, 'portal' => $pc, 'emailId' => $em, 'simId' => $sim, 'status' => 'active', 'lastVerified' => $today, 'createdAt' => $today, 'note' => '', 'updated' => $today]);
-    putdoc('people', bin2hex(random_bytes(10)), ['name' => $name, 'portal' => $pc, 'emailId' => $em, 'accountId' => $acc, 'status' => $appt ? 'booked' : 'waitlist', 'apptDate' => $appt, 'apptTime' => '', 'note' => '', 'passportId' => '', 'addedAt' => $today]);
+    putdoc('people', bin2hex(random_bytes(10)), ['name' => $name, 'portal' => $pc, 'emailId' => $em, 'accountId' => $acc, 'status' => $appt ? 'booked' : 'waitlist', 'apptDate' => $appt, 'apptTime' => '', 'note' => '', 'passportId' => '', 'addedAt' => $today, 'simId' => $sim]);
     $n++; if ($appt) $booked++;
   }
   putdoc('logs', 'mig-it-2026-10', ['type' => 'edit', 'portal' => $pc, 'date' => $today, 'at' => date('c'), 'emailId' => '', 'simId' => '', 'note' => "لیست ایتالیا وارد شد: $n اکانت و مسافر"]);
@@ -422,6 +425,20 @@ function migrate_it_2026_10() {
   foreach (tg_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
 }
 
+// one-time: every traveller keeps its own phone (before, the phone lived only on the account)
+function migrate_people_sim() {
+  if (getdoc('logs', 'mig-psim')) return;
+  $accs = []; foreach (pdo()->query("SELECT id, data FROM docs WHERE col='accounts'")->fetchAll(PDO::FETCH_ASSOC) as $r) $accs[$r['id']] = json_decode($r['data'], true);
+  pdo()->beginTransaction();
+  foreach (pdo()->query("SELECT id, data FROM docs WHERE col='people'")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $p = json_decode($r['data'], true); if (!empty($p['simId'])) continue;
+    $sim = $accs[$p['accountId'] ?? '']['simId'] ?? ''; if ($sim === '') continue;
+    $p['simId'] = $sim; putdoc('people', $r['id'], $p);
+  }
+  putdoc('logs', 'mig-psim', ['type' => 'edit', 'portal' => '', 'date' => date('Y-m-d'), 'at' => date('c'), 'emailId' => '', 'simId' => '', 'note' => 'شماره هر مسافر جدا ذخیره شد']);
+  pdo()->commit();
+}
+
 // ---------- API ----------
 if (isset($_GET['api'])) {
   if (!$authed) fail('login', 'unauthenticated', 401);
@@ -431,6 +448,7 @@ if (isset($_GET['api'])) {
     switch ($_GET['api']) {
       case 'all':
         purge(); try { migrate_it_2026_10(); } catch (Throwable $e) { if (pdo()->inTransaction()) pdo()->rollBack(); }
+        try { migrate_people_sim(); } catch (Throwable $e) { if (pdo()->inTransaction()) pdo()->rollBack(); }
         $out = []; foreach (COLS as $c) $out[$c] = [];
         foreach (pdo()->query('SELECT col, id, data FROM docs')->fetchAll(PDO::FETCH_ASSOC) as $r) if (isset($out[$r['col']])) $out[$r['col']][$r['id']] = json_decode($r['data']);
         foreach ($out as $c => $v) $out[$c] = (object)$v;
@@ -1157,20 +1175,25 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .accb-o b{background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 12px;font-size:var(--fs-sm)}
 .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
 .accb-o small{font-size:var(--fs-2xs);color:var(--amber)}
+/* use count: flag + n/5 next to an email or phone */
+.use{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-2xs);font-weight:800;color:var(--muted);background:var(--soft);border-radius:var(--r-pill);padding:1px 7px 1px 5px;white-space:nowrap;flex:none}
+.use b{font-variant-numeric:tabular-nums}
+.use.full{background:var(--red-soft);color:var(--red-ink)}
+.res-p{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:4px 0}
 /* country page: compact card grid — traveller names on top, account details below */
-.accl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;padding:4px 18px 18px}
-.accl .accb{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;position:relative}
-.accl .accb:hover{border-color:var(--line-strong);background:var(--soft)}
-.accl .accb-n{gap:4px;padding-inline-end:44px;min-height:24px}
-.accl .accb-n i{border-radius:var(--r-sm);background:var(--amber-soft);color:var(--amber-ink);box-shadow:none;font-weight:700;font-size:var(--fs-xs);padding:2px 9px}
+.accl{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:4px 18px 18px}
+.accl .accb{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;cursor:default}
+.accl .accb-n{gap:4px;min-height:24px}
+.accl .accb-n button{font:inherit;cursor:pointer;border:0;border-radius:var(--r-sm);background:var(--amber-soft);color:var(--amber-ink);font-weight:700;font-size:var(--fs-xs);padding:2px 9px}
+.accl .accb-n button:hover{filter:brightness(.95)}
+.accl .accb-c{gap:4px}
+.accl .accb-l{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;border:0;background:none;padding:2px 0;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.accl .accb-l:hover .mono{color:var(--accent)}
+.accl .accb-l .mono{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;direction:ltr;unicode-bidi:isolate}
 .accl .accb-n em{color:var(--muted);font-size:var(--fs-xs)}
 .accl .accb-c{border-top:1px dashed var(--line);padding-top:6px}
 .accl .accb-e{font-size:var(--fs-xs);font-weight:600}
 .accl .accb-p{font-size:var(--fs-xs);color:var(--muted);opacity:1}
-.accl .accb-o{position:absolute;top:10px;inset-inline-end:10px;flex-direction:row;gap:4px}
-.accl .accb-o b{background:var(--soft);color:var(--muted);font-weight:700;font-size:var(--fs-2xs);padding:1px 8px}
-.accl .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
-.accl .accb-o small{font-size:0}.accl .accb-o small::before{content:"⚠";font-size:var(--fs-xs)}
 .cstats{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:var(--fs-sm);font-weight:700;opacity:.95}
 .cstats span{display:flex;align-items:baseline;gap:5px}
 .cstats b{font-size:var(--fs-lg);font-weight:800;font-variant-numeric:tabular-nums}
@@ -1497,6 +1520,25 @@ const emailsAll = () => [...S.emails.values()].filter(e => e.status !== "inactiv
 const simsAll = () => [...S.sims.values()].filter(m => m.status !== "inactive").sort((a,b) => a.code.localeCompare(b.code));
 const portalsList = () => [...S.portals.values()].sort((a,b) => (a.order ?? 99) - (b.order ?? 99) || a.code.localeCompare(b.code));
 const occupants = id => S.people.filter(p => p.accountId === id && p.status !== "removed");
+// On each country an email and a phone can each be used for up to CAP travellers, independently of each other.
+// Every traveller keeps the email + phone that were used for them.
+const pSimId = p => p.simId || S.accounts.get(p.accountId)?.simId || "";
+const pSim = p => S.sims.get(pSimId(p)) || null;
+const usesE = (pc, em) => S.people.filter(p => p.status !== "removed" && p.portal === pc && p.emailId === em);
+const usesS = (pc, sim) => S.people.filter(p => p.status !== "removed" && p.portal === pc && pSimId(p) === sim);
+const usedPcs = f => [...new Set(S.people.filter(p => p.status !== "removed" && f(p)).map(p => p.portal))];
+// VFS said this phone is already registered on this country and we have no traveller on it
+const simTaken = (pc, sim) => S.regs.get(regId(pc, sim))?.status === "registered" && !usesS(pc, sim).length && ![...S.accounts.values()].some(a => a.portal === pc && a.simId === sim && liveAcc(a));
+const simLeft = (pc, sim) => simTaken(pc, sim) ? 0 : Math.max(0, CAP - usesS(pc, sim).length);
+const useTag = (pc, n, flag = true) => `<span class="use ${n >= CAP ? "full" : ""}">${flag ? flagEl(pc, "sm") : ""}<b>${faN(n)}/${faN(CAP)}</b></span>`;
+// phone picker for adding n travellers on one country
+function simSel(pc, pref, n = 1){
+  const opts = simsAll().map(m => { const u = usesS(pc, m.code).length, t = simTaken(pc, m.code);
+    return [m.code, `${localPhone(m.number)} — ${t ? "VFS گفته تکراری است" : `${faN(u)}/${faN(CAP)} استفاده شده`}`, t || CAP - u < n]; }).sort((a, b) => a[2] - b[2]);
+  const v = pref && simLeft(pc, pref) >= n ? pref : opts.find(o => !o[2])?.[0] || "";
+  return F.sel("sim", "شماره برای این مسافرها", [["", "— بدون شماره —"], ...opts], v, `هر شماره برای هر کشور حداکثر ${faN(CAP)} بار`);
+}
+const simOk = (pc, sim, n) => !sim || simLeft(pc, sim) >= n || (toast(`این شماره برای ${pName(pc)} فقط ${faN(simLeft(pc, sim))} جای خالی دارد`), false);
 
 // status of an email on one VFS country
 function accStatus(a){
@@ -1505,26 +1547,15 @@ function accStatus(a){
   const d = ago(a.lastVerified);
   return d !== null && d <= FRESH ? "active" : "check";
 }
-// what a phone is doing on one VFS country
-function phoneOn(pc, sim){
-  const acc = [...S.accounts.values()].find(a => a.portal === pc && a.simId === sim && accStatus(a) !== "none" && accStatus(a) !== "unused");
-  if (acc) return {kind:"acc", acc};
-  const r = S.regs.get(regId(pc, sim));
-  if (r?.status === "registered") return {kind:"orphan"};
-  return {kind:"free"};
-}
-// accounts a phone has created, across all countries
-function phoneAccounts(sim){
-  return [...S.accounts.values()].filter(a => a.simId === sim && (accStatus(a) === "active" || accStatus(a) === "check"));
-}
 function countryStats(pc){
-  const s = {active:0, check:0, unused:0, none:0, free:0, people:0, freePhones:0};
+  const s = {active:0, check:0, unused:0, none:0, free:0, people:0, freePhones:0, freeEmails:0, usedE:0, usedS:0};
   for (const e of emailsAll()){
-    const id = accId(pc, e.code), st = accStatus(S.accounts.get(id)); s[st]++;
+    const id = accId(pc, e.code), st = accStatus(S.accounts.get(id)), n = usesE(pc, e.code).length; s[st]++;
     if (st === "active") s.free += Math.max(0, CAP - occupants(id).length);
+    if (n) s.usedE++; if (st !== "none" && n < CAP) s.freeEmails++;
   }
+  for (const m of simsAll()){ if (usesS(pc, m.code).length) s.usedS++; if (simLeft(pc, m.code) > 0) s.freePhones++; }
   s.people = S.people.filter(p => p.portal === pc && (p.status === "waitlist" || p.status === "booked")).length;
-  s.freePhones = simsAll().filter(m => phoneOn(pc, m.code).kind === "free").length;
   return s;
 }
 
@@ -1562,7 +1593,7 @@ function renderCountries(){
       <div class="ccard-h">${flagEl(p.code)}<div><b>${esc(pName(p.code))}</b><small>VFS ${esc(p.code)}</small></div></div>
       <div class="big"><b>${faN(s.active)}</b><span>اکانت فعال</span></div>
       <div class="minis"><div class="mini"><b>${faN(s.check)}</b><span>چک شود</span></div><div class="mini"><b>${faN(s.free)}</b><span>جای خالی</span></div><div class="mini"><b>${faN(s.people)}</b><span>مسافر</span></div></div>
-      <div class="ccard-f"><span>${faN(s.unused + s.none)} ایمیل آزاد</span><span>${faN(s.freePhones)} شماره آزاد</span>${wp ? `<span>${faN(wp)} پاسپورت منتظر</span>` : ""}</div></button>`; }).join("")}
+      <div class="ccard-f"><span>${faN(s.freeEmails)} ایمیل با جای خالی</span><span>${faN(s.freePhones)} شماره با جای خالی</span>${wp ? `<span>${faN(wp)} پاسپورت منتظر</span>` : ""}</div></button>`; }).join("")}
     <button class="ccard add" type="button" data-act="addportal">+ افزودن کشور</button></div>`;
   return h;
 }
@@ -1591,37 +1622,43 @@ function renderCountry(pc){
   const s = countryStats(pc);
   let h = `<div style="--cc:${flagColors(pc)[0] || colorOf(pc)}"><div class="hero"${flagBg(pc)}><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button></div></div>
-    <div class="cstats"><span><b>${faN(s.active)}</b>اکانت فعال</span><span><b>${faN(s.people)}</b>مسافر</span><span><b>${faN(s.free)}</b>جای خالی</span><span><b>${faN(s.unused + s.none)}</b>ایمیل آزاد</span><span><b>${faN(s.freePhones)}</b>شماره آزاد</span>${s.check ? `<span class="warn"><b>${faN(s.check)}</b>باید چک شود</span>` : ""}</div></div>`;
+    <div class="cstats"><span><b>${faN(s.people)}</b>مسافر</span><span><b>${faN(s.usedE)}</b>ایمیل استفاده‌شده</span><span><b>${faN(s.usedS)}</b>شماره استفاده‌شده</span><span><b>${faN(s.freeEmails)}</b>ایمیل با جای خالی</span><span><b>${faN(s.freePhones)}</b>شماره با جای خالی</span>${s.check ? `<span class="warn"><b>${faN(s.check)}</b>باید چک شود</span>` : ""}</div></div>`;
   h += globalAlerts(pc);
-  h += `<section class="sec"><div class="sec-h"><h2>اکانت‌های ${esc(pName(pc))}</h2><small class="sec-hint">روی هر اکانت بزنید تا مسافرهایش را ببینید</small></div>${accountsList(pc) || `<div class="empty">هنوز اکانتی برای ${esc(pName(pc))} نیست. پاسپورت آپلود کنید؛ سایت ایمیل و شماره برای ساخت اکانت پیشنهاد می‌دهد.</div>`}</section>`;
+  h += `<section class="sec"><div class="sec-h"><h2>مسافرها و ایمیل و شماره‌شان</h2><small class="sec-hint">کنار هر ایمیل و شماره: چند بار از ${faN(CAP)} بار برای ${esc(pName(pc))} استفاده شده</small></div>${pairsList(pc) || `<div class="empty">هنوز مسافری برای ${esc(pName(pc))} نیست. پاسپورت آپلود کنید؛ سایت ایمیل و شماره پیشنهاد می‌دهد.</div>`}</section>`;
   h += `</div>`;
   return h;
 }
 
 const liveAcc = a => a && S.emails.has(a.emailId) && (accStatus(a) === "active" || accStatus(a) === "check");
-function accountsList(pc){
-  const accs = [...S.accounts.values()].filter(a => a.portal === pc && liveAcc(a)).sort((x, y) => x.emailId.localeCompare(y.emailId));
-  if (!accs.length) return "";
-  return `<div class="accl">${accs.map(a => { const e = S.emails.get(a.emailId), m = a.simId ? S.sims.get(a.simId) : null, occ = occupants(a.id), st = accStatus(a);
-    return `<button type="button" class="accb" data-act="acc" data-id="${esc(a.id)}">
-      <span class="accb-n">${occ.length ? occ.map(p => `<i>${esc(p.name)}</i>`).join("") : `<em>بدون مسافر</em>`}</span>
-      <span class="accb-c"><span class="mono accb-e">${esc(e?.address || a.emailId)}</span><span class="mono accb-p">${m ? esc(prettyPhone(m.number)) : "بدون شماره"}</span></span>
-      <span class="accb-o ${occ.length >= CAP ? "full" : ""}">${st === "check" ? `<small>⚠ چک شود</small>` : ""}<b>${faN(occ.length)}/${faN(CAP)}</b></span></button>`; }).join("")}</div>`;
+// travellers grouped by the email + phone used for them; each email and phone shows its own use count on this country
+function pairsList(pc){
+  const g = new Map();
+  for (const p of S.people) if (p.portal === pc && p.status !== "removed"){ const k = p.emailId + "|" + pSimId(p); if (!g.has(k)) g.set(k, []); g.get(k).push(p); }
+  if (!g.size) return "";
+  const addr = em => S.emails.get(em)?.address || em;
+  return `<div class="accl">${[...g.entries()].sort((x, y) => addr(x[0].split("|")[0]).localeCompare(addr(y[0].split("|")[0]))).map(([k, ps]) => { const [em, sim] = k.split("|"), m = S.sims.get(sim);
+    return `<div class="accb">
+      <span class="accb-n">${ps.map(p => `<button type="button" data-act="person" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join("")}</span>
+      <span class="accb-c">
+        <button type="button" class="accb-l" data-act="resopen" data-kind="email" data-id="${esc(em)}"><span class="mono accb-e">${esc(addr(em))}</span>${useTag(pc, usesE(pc, em).length, false)}</button>
+        ${m ? `<button type="button" class="accb-l" data-act="resopen" data-kind="sim" data-id="${esc(sim)}"><span class="mono accb-p">${esc(prettyPhone(m.number))}</span>${useTag(pc, usesS(pc, sim).length, false)}</button>` : `<span class="accb-p">بدون شماره</span>`}
+      </span></div>`; }).join("")}</div>`;
 }
 // popup for one phone or email: every country it is on, the paired email/phone and the travellers
 function openRes(kind, code){
-  const x = kind === "sim" ? S.sims.get(code) : S.emails.get(code); if (!x) return;
-  const accs = [...S.accounts.values()].filter(a => liveAcc(a) && (kind === "sim" ? a.simId === code : a.emailId === code));
-  const taken = kind === "sim" ? portalsList().filter(p => phoneOn(p.code, code).kind === "orphan") : [];
-  const val = kind === "sim" ? prettyPhone(x.number) : x.address;
-  openSheet(kind === "sim" ? "شماره" : "ایمیل",
-    `<div class="res-big"><span class="mono">${esc(val)}</span>${copyBtn(kind === "sim" ? localPhone(x.number) : x.address)}</div>
-    ${accs.length ? accs.map(a => { const occ = occupants(a.id), other = kind === "sim" ? (S.emails.get(a.emailId)?.address || a.emailId) : (a.simId ? prettyPhone(S.sims.get(a.simId)?.number || "") : "بدون شماره");
-      return `<div class="res-acc"><div class="res-acc-h">${flagEl(a.portal, "md")}<b>${esc(pName(a.portal))}</b><span class="accb-o ${occ.length >= CAP ? "full" : ""}"><b>${faN(occ.length)}/${faN(CAP)}</b></span></div>
-        <div class="res-acc-k">${kind === "sim" ? "با ایمیل" : "با شماره"}</div><div class="mono res-acc-v">${esc(other)}</div>
-        <div class="res-acc-k">مسافرها</div><div class="accb-n">${occ.length ? occ.map(p => `<i>${esc(p.name)}</i>`).join("") : `<em>بدون مسافر</em>`}</div>
-        <button class="btn sm" type="button" data-act="acc" data-id="${esc(a.id)}">باز کردن اکانت</button></div>`; }).join("") : `<div class="empty">هنوز روی هیچ کشوری اکانت ندارد.</div>`}
-    ${taken.length ? `<div class="res-acc-k">ثبت‌شده در VFS بدون اکانت ما</div><div class="chips">${taken.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + code)}">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><small>×</small></button>`).join("")}</div>` : ""}`,
+  const isS = kind === "sim", x = isS ? S.sims.get(code) : S.emails.get(code); if (!x) return;
+  const mine = S.people.filter(p => p.status !== "removed" && (isS ? pSimId(p) === code : p.emailId === code));
+  const pcs = [...new Set(mine.map(p => p.portal))];
+  const taken = isS ? portalsList().filter(p => simTaken(p.code, code)) : [];
+  const val = isS ? prettyPhone(x.number) : x.address;
+  const other = p => isS ? (S.emails.get(p.emailId)?.address || p.emailId) : (pSim(p) ? prettyPhone(pSim(p).number) : "بدون شماره");
+  openSheet(isS ? "شماره" : "ایمیل",
+    `<div class="res-big"><span class="mono">${esc(val)}</span>${copyBtn(isS ? localPhone(x.number) : x.address)}</div>
+    ${pcs.length ? pcs.map(pc => { const ps = mine.filter(p => p.portal === pc);
+      return `<div class="res-acc"><div class="res-acc-h">${flagEl(pc, "md")}<b>${esc(pName(pc))}</b><span class="accb-o ${ps.length >= CAP ? "full" : ""}"><b>${faN(ps.length)}/${faN(CAP)}</b></span></div>
+        <div class="res-acc-k">مسافرها و ${isS ? "ایمیلی" : "شماره‌ای"} که برایشان استفاده شده</div>
+        ${ps.map(p => `<div class="res-p"><span class="accb-n"><i>${esc(p.name)}</i></span><span class="mono res-acc-v">${esc(other(p))}</span></div>`).join("")}</div>`; }).join("") : `<div class="empty">هنوز برای هیچ مسافری استفاده نشده.</div>`}
+    ${taken.length ? `<div class="res-acc-k">ثبت‌شده در VFS بدون مسافر ما</div><div class="chips">${taken.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + code)}">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><small>×</small></button>`).join("")}</div>` : ""}`,
     null, `<button class="btn sm" type="button" data-act="${kind}" data-id="${esc(code)}">ویرایش</button>`);
 }
 function emailRow(pc, {e, id, a, st}){
@@ -1645,7 +1682,7 @@ function evHTML(l){
 }
 
 function credCell(p){
-  const a = S.accounts.get(p.accountId), m = a?.simId ? S.sims.get(a.simId) : null;
+  const m = pSim(p);
   return `<span class="mono" style="font-size:12.5px">${esc(S.emails.get(p.emailId)?.address || p.emailId)}</span>${m ? `<small class="mono">${esc(prettyPhone(m.number))}</small>` : ""}`;
 }
 const blobUrl = id => "?api=file&id=" + encodeURIComponent(id);
@@ -1658,7 +1695,7 @@ function expiryChip(exp){
   return `<span class="st ${cls}" style="align-self:flex-start">${txt} · <span class="mono">${esc(exp)}</span></span>`;
 }
 function passCard(x){
-  const a = x.accountId ? S.accounts.get(x.accountId) : null, m = a?.simId ? S.sims.get(a.simId) : null;
+  const a = x.accountId ? S.accounts.get(x.accountId) : null, m = S.sims.get(x.simId || a?.simId || "") || null;
   const isImg = (x.contentType || "").startsWith("image/");
   const left = x.expiry ? -ago(x.expiry) : null;
   const expCls = left === null ? "" : left < 0 ? "bad" : left < 183 ? "warn" : "";
@@ -1715,13 +1752,17 @@ function planFor(pc){
   const leftovers = [];
   for (const u of U){ const t = pool.find(x => CAP - x.occ - x.add.length >= u.items.length); if (t) t.add.push(...u.items); else leftovers.push(u); }
   const freeEmails = emailsAll().filter(e => { const st = accStatus(S.accounts.get(accId(pc, e.code))); return st === "unused" || st === "none"; });
-  const freeSims = simsAll().filter(m => phoneOn(pc, m.code).kind === "free");
   const news = []; let cur = null;
   for (const u of leftovers){
-    if (!cur || CAP - cur.add.length < u.items.length){ cur = {kind:"new", e:freeEmails[news.length] || null, sim:freeSims[news.length] || null, add:[]}; news.push(cur); }
+    if (!cur || CAP - cur.add.length < u.items.length){ cur = {kind:"new", e:freeEmails[news.length] || null, sim:null, add:[]}; news.push(cur); }
     cur.add.push(...u.items);
   }
   const steps = [...pool.filter(x => x.add.length), ...news];
+  // a phone can be used CAP times on this country: keep the account's phone while it has room, else the fullest phone that still fits
+  const pend = new Map(), left = c => simLeft(pc, c) - (pend.get(c) || 0);
+  for (const s of steps){ const n = s.add.length, pref = s.kind === "existing" ? s.a?.simId : "";
+    const c = pref && left(pref) >= n ? pref : simsAll().map(m => m.code).filter(c => left(c) >= n).sort((x, y) => left(x) - left(y))[0] || "";
+    s.sim = c ? S.sims.get(c) : null; if (c) pend.set(c, (pend.get(c) || 0) + n); }
   lastPlans[pc] = steps;
   return {waiting, steps};
 }
@@ -1746,7 +1787,7 @@ function stepCard(pc, s, i, total){
     ${ex && s.st === "check" ? `<div class="sc-warn">${s.a?.lastVerified ? `آخرین ورود ${rel(s.a.lastVerified)}` : "آخرین ورود ثبت نشده"} · ممکن است پاک شده باشد</div>` : ""}
     <div class="task-grid">
       <div><div class="task-lbl">مسافران</div><div class="plist2">${s.add.map(prow2).join("")}</div></div>
-      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? (s.sim ? credLine("شماره", prettyPhone(s.sim.number), localPhone(s.sim.number)) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div></div>
+      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div></div>
     </div>
     <div class="task-acts">${ex || ok ? (() => { const [main, ...rest] = acts.split('<button type="button" class="res').filter(Boolean).map(x => '<button type="button" class="res' + x);
       return `${main}<details class="res-more"><summary>مشکل داشت؟</summary><div class="res-grid">${rest.join("")}</div></details>`; })() : acts}</div></div>`;
@@ -1774,12 +1815,11 @@ function prow2(x){
     <button class="btn sm" type="button" data-act="editpass" data-id="${esc(x.id)}">ویرایش</button></div>`;
 }
 function renderQueue(){
-  const liveA = [...S.accounts.values()].filter(a => S.emails.has(a.emailId) && (accStatus(a) === "active" || accStatus(a) === "check"));
-  const flagsOf = list => list.length ? `<span class="hx-flags">${[...new Set(list.map(a => a.portal))].map(pc => flagEl(pc, "sm")).join("")}</span>` : `<span class="hx-free">آزاد</span>`;
+  const flagsOf = pcs => pcs.length ? `<span class="hx-flags">${pcs.map(pc => flagEl(pc, "sm")).join("")}</span>` : `<span class="hx-free">آزاد</span>`;
   const ems = emailsAll(), sims = simsAll();
-  const emHTML = ems.map(e => `<li><span class="mono">${esc(e.address)}</span>${flagsOf(liveA.filter(a => a.emailId === e.code))}</li>`).join("");
-  const smHTML = sims.map(m => `<li><span class="mono">${esc(prettyPhone(m.number))}</span>${flagsOf(liveA.filter(a => a.simId === m.code))}</li>`).join("");
-  const freeE = ems.filter(e => !liveA.some(a => a.emailId === e.code)).length, freeS = sims.filter(m => !liveA.some(a => a.simId === m.code)).length;
+  const emHTML = ems.map(e => `<li><span class="mono">${esc(e.address)}</span>${flagsOf(usedPcs(p => p.emailId === e.code))}</li>`).join("");
+  const smHTML = sims.map(m => `<li><span class="mono">${esc(prettyPhone(m.number))}</span>${flagsOf(usedPcs(p => pSimId(p) === m.code))}</li>`).join("");
+  const freeE = ems.filter(e => !usedPcs(p => p.emailId === e.code).length).length, freeS = sims.filter(m => !usedPcs(p => pSimId(p) === m.code).length).length;
   let h = `<section class="fhero">
     <div class="hero-sky"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></div>
     <div class="hero-plane">${PLANE_SVG}</div>
@@ -1803,17 +1843,17 @@ function renderQueue(){
   return h;
 }
 async function assignTo(pc, em, items, simId){
-  const id = accId(pc, em);
+  const id = accId(pc, em); simId = simId || S.accounts.get(id)?.simId || "";
   for (const x of items){ const ref = db.collection("people").doc();
-    if (!await write(() => ref.set({name:x.name || "بی‌نام", portal:pc, emailId:em, accountId:id, status:"waitlist", apptDate:"", note:"", passportId:x.id, addedAt:today()}))) return false;
-    await write(() => db.doc("passports/" + x.id).update({status:"assigned", accountId:id, emailId:em, personId:ref.id})); }
-  await saveAccount(pc, em, {status:"active", lastVerified:today(), ...(simId ? {simId} : {})});
+    if (!await write(() => ref.set({name:x.name || "بی‌نام", portal:pc, emailId:em, simId, accountId:id, status:"waitlist", apptDate:"", note:"", passportId:x.id, addedAt:today()}))) return false;
+    await write(() => db.doc("passports/" + x.id).update({status:"assigned", accountId:id, emailId:em, simId, personId:ref.id})); }
+  await saveAccount(pc, em, {status:"active", lastVerified:today(), ...(simId && !S.accounts.get(id)?.simId ? {simId} : {})});
   await addLog("added", pc, {emailId:em, simId:simId || S.accounts.get(id)?.simId || "", note:items.map(x => x.name).join("، ")});
   return true;
 }
 async function queueAct(a, key){
   const [pc, i] = key.split("|"), s = (lastPlans[pc] || [])[+i]; if (!s) return;
-  if (a === "q_ok"){ if (await assignTo(pc, s.e.code, s.add)) toast(`${faN(s.add.length)} نفر به Waitlist رفتند`); }
+  if (a === "q_ok"){ if (await assignTo(pc, s.e.code, s.add, s.sim?.code)) toast(`${faN(s.add.length)} نفر به Waitlist رفتند`); }
   if (a === "q_gone"){ await quick("gone", s.id); }
   if (a === "q_skip"){ if (!skipAcc.has(pc)) skipAcc.set(pc, new Set()); skipAcc.get(pc).add(s.id); render(); toastUndo("این اکانت کنار رفت", () => { skipAcc.get(pc)?.delete(s.id); render(); }); }
   if (a === "q_new"){
@@ -1841,7 +1881,7 @@ function renderWl(){
     ${cs.length > 1 ? `<div class="fchips"><button type="button" class="fchip ${wlCountry ? "" : "on"}" data-act="wlc" data-id="">همه</button>${cs.map(c => `<button type="button" class="fchip ${wlCountry === c.code ? "on" : ""}" data-act="wlc" data-id="${esc(c.code)}">${flagEl(c.code, "sm")}${esc(pName(c.code))} <b>${faN(live.filter(p => p.portal === c.code).length)}</b></button>`).join("")}</div>` : ""}`;
   if (!live.length) return h + `<section class="sec"><div class="empty">هنوز مسافری در ویت‌لیست نیست.</div></section>`;
   const inC = p => !wlCountry || p.portal === wlCountry;
-  const acc = p => { const a = S.accounts.get(p.accountId), e = S.emails.get(p.emailId), m = a?.simId ? S.sims.get(a.simId) : null;
+  const acc = p => { const e = S.emails.get(p.emailId), m = pSim(p);
     return `<button type="button" class="wl-acc2" data-act="acc" data-id="${esc(p.accountId)}" title="باز کردن اکانت"><span class="mono">${esc(e?.address || p.emailId)}</span>${m ? `<span class="mono">${esc(prettyPhone(m.number))}</span>` : ""}</button>`; };
   const acts = p => `<div class="wl-acts">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div>`;
   const fmt = (iso, o) => { try { return new Intl.DateTimeFormat("fa-IR-u-ca-gregory", o).format(new Date(iso + "T12:00:00")); } catch { return iso; } };
@@ -1914,13 +1954,13 @@ function apptConfirmSheet(ap){
       await undoable(async () => {
         for (const p of ps) if (!await write(() => db.doc("people/" + p.id).update({status:"booked", apptDate:d.apptDate, apptTime:d.apptTime || "", note:[p.note, note].filter(Boolean).join(" · ")}))) return;
         for (const pc of new Set(ps.map(p => p.portal))){ const g = ps.filter(p => p.portal === pc);
-          await addLog("booked", pc, {emailId:g[0].emailId, simId:S.accounts.get(g[0].accountId)?.simId || "", note:`${g.map(p => p.name).join("، ")} · ${d.apptDate}${d.apptTime ? " " + d.apptTime : ""}`}); }
+          await addLog("booked", pc, {emailId:g[0].emailId, simId:pSimId(g[0]), note:`${g.map(p => p.name).join("، ")} · ${d.apptDate}${d.apptTime ? " " + d.apptTime : ""}`}); }
         toast(`وقت ${faN(ps.length)} نفر ثبت شد`); });
       return true; }, "", "ثبت وقت");
 }
 function bookSheet(ids){
   const ps = ids.map(i => S.people.find(p => p.id === i)).filter(Boolean); if (!ps.length) return;
-  const p0 = ps[0], a = S.accounts.get(p0.accountId), e = S.emails.get(p0.emailId);
+  const p0 = ps[0], e = S.emails.get(p0.emailId);
   openSheet(ps.length > 1 ? `ثبت وقت · ${faN(ps.length)} نفر` : `ثبت وقت · ${p0.name}`,
     `<div class="sc-cred"><div><span class="lbl">کشور</span>${flagEl(p0.portal, "sm")}<b style="font-size:13px">${esc(pName(p0.portal))}</b></div>${credLine("ایمیل", e?.address || p0.emailId)}</div>
     <div class="sc-people" style="--cc:${colorOf(p0.portal)}">${ps.map(p => `<span>${esc(p.name)}</span>`).join("")}</div>
@@ -1928,7 +1968,7 @@ function bookSheet(ids){
     ${F.text("apptNote","یادداشت (مثلاً شماره رزرو یا مرکز)","")}`,
     async () => { const d = formData(); if (!d.apptDate) { toast("تاریخ وقت را وارد کنید"); return false; }
       for (const p of ps) if (!await write(() => db.doc("people/" + p.id).update({status:"booked", apptDate:d.apptDate, apptTime:d.apptTime || "", note:[p.note, d.apptNote].filter(Boolean).join(" · ")}))) return false;
-      await addLog("booked", p0.portal, {emailId:p0.emailId, simId:a?.simId || "", note:`${ps.map(p => p.name).join("، ")} · ${d.apptDate}${d.apptTime ? " " + d.apptTime : ""}`});
+      await addLog("booked", p0.portal, {emailId:p0.emailId, simId:pSimId(p0), note:`${ps.map(p => p.name).join("، ")} · ${d.apptDate}${d.apptTime ? " " + d.apptTime : ""}`});
       toast(`وقت ${faN(ps.length)} نفر ثبت شد`); return true; }, "", "ثبت وقت");
 }
 
@@ -1938,19 +1978,16 @@ function resMatrix(){
   const ps = portalsList(), off = x => x.status === "inactive", ord = (x, y) => off(x) - off(y) || x.code.localeCompare(y.code);
   if (!ps.length) return `<section class="sec"><div class="empty">اول از صفحه «کشورها» کشور اضافه کنید.</div></section>`;
   const head = `<thead><tr><th class="mx-k"></th>${ps.map(p => `<th title="${esc(pName(p.code))}">${flagEl(p.code, "sm")}<small>${esc(pName(p.code))}</small></th>`).join("")}</tr></thead>`;
-  const acc = (a, tip) => { const n = occupants(a.id).length;
-    return `<td><button type="button" class="mx-c ${n ? "has" : "zero"} ${n >= CAP ? "full" : ""} ${accStatus(a) === "check" ? "chk" : ""}" data-act="acc" data-id="${esc(a.id)}" title="${esc(pName(a.portal) + " · " + tip + " · " + n + "/" + CAP)}">${n ? faN(n) : ""}</button></td>`; };
+  const used = (pc, kind, code, n) => `<td><button type="button" class="mx-c has ${n >= CAP ? "full" : ""}" data-act="resopen" data-kind="${kind}" data-id="${esc(code)}" title="${esc(pName(pc) + " · " + n + " از " + CAP + " بار")}">${faN(n)}</button></td>`;
   const free = `<td><span class="mx-c free"></span></td>`;
   const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
   const sRows = sims.map(m => `<tr class="${off(m) ? "mx-off" : ""}"><th class="mx-k"><button type="button" class="mx-l" data-act="resopen" data-kind="sim" data-id="${esc(m.code)}"><span class="tag">${esc(m.code)}</span><span class="mono">${esc(prettyPhone(m.number))}</span></button></th>${ps.map(p => {
-      const a = [...S.accounts.values()].find(x => x.portal === p.code && x.simId === m.code && liveAcc(x));
-      if (a) return acc(a, S.emails.get(a.emailId)?.address || a.emailId);
-      return phoneOn(p.code, m.code).kind === "orphan" ? `<td><button type="button" class="mx-c reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="${esc(pName(p.code))}: ثبت‌شده در VFS بدون اکانت (برای آزاد کردن بزنید)">×</button></td>` : free; }).join("")}</tr>`).join("");
+      const n = usesS(p.code, m.code).length; if (n) return used(p.code, "sim", m.code, n);
+      return simTaken(p.code, m.code) ? `<td><button type="button" class="mx-c reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="${esc(pName(p.code))}: ثبت‌شده در VFS بدون اکانت (برای آزاد کردن بزنید)">×</button></td>` : free; }).join("")}</tr>`).join("");
   const eRows = ems.map(e => `<tr class="${off(e) ? "mx-off" : ""}"><th class="mx-k"><button type="button" class="mx-l" data-act="resopen" data-kind="email" data-id="${esc(e.code)}"><span class="tag">${esc(e.code)}</span><span class="mono">${esc(e.address)}</span></button></th>${ps.map(p => {
-      const a = S.accounts.get(accId(p.code, e.code));
-      if (liveAcc(a)) return acc(a, a.simId ? prettyPhone(S.sims.get(a.simId)?.number || "") : "بدون شماره");
-      return accStatus(a) === "none" ? `<td><span class="mx-c gone" title="${esc(pName(p.code))}: اکانت پاک شده">–</span></td>` : free; }).join("")}</tr>`).join("");
-  const legend = `<div class="mx-legend"><span><i class="mx-c has">۳</i> اکانت با ۳ مسافر</span><span><i class="mx-c zero"></i> اکانت بدون مسافر</span><span><i class="mx-c has full">۵</i> پر</span><span><i class="mx-c reg">×</i> ثبت‌شده در VFS، بدون اکانت</span><span><i class="mx-c free"></i> آزاد</span></div>`;
+      const n = usesE(p.code, e.code).length; if (n) return used(p.code, "email", e.code, n);
+      return accStatus(S.accounts.get(accId(p.code, e.code))) === "none" ? `<td><span class="mx-c gone" title="${esc(pName(p.code))}: اکانت پاک شده">–</span></td>` : free; }).join("")}</tr>`).join("");
+  const legend = `<div class="mx-legend"><span><i class="mx-c has">۳</i> ۳ بار از ${faN(CAP)} بار استفاده شده</span><span><i class="mx-c has full">۵</i> پر</span><span><i class="mx-c reg">×</i> VFS گفته تکراری است</span><span><i class="mx-c free"></i> استفاده نشده</span></div>`;
   return `${legend}<div class="mx-wrap">
     <section class="sec mx-sec"><div class="sec-h"><h2>📱 شماره‌ها <small>${faN(sims.length)}</small></h2></div><div class="table-wrap"><table class="mx">${head}<tbody>${sRows || ""}</tbody></table></div></section>
     <section class="sec mx-sec"><div class="sec-h"><h2>📧 ایمیل‌ها <small>${faN(ems.length)}</small></h2></div><div class="table-wrap"><table class="mx">${head}<tbody>${eRows || ""}</tbody></table></div></section></div>`;
@@ -1978,25 +2015,26 @@ function renderRes(){
   const chip = (pc, st, txt, accId) => accId
     ? `<button type="button" class="rs-chip st-${st} ${occupants(accId).length ? "" : "empty"}" data-act="acc" data-id="${esc(accId)}" ${occupants(accId).length ? "" : `title="اکانت ساخته شده ولی هنوز مسافری ندارد"`}>${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span><small>${faN(occupants(accId).length)}/${faN(CAP)}</small></button>`
     : `<span class="rs-chip st-${st}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><span class="mono">${esc(txt)}</span></span>`;
+  const useChip = (pc, kind, code, n) => `<button type="button" class="rs-chip ${n >= CAP ? "st-none" : "st-active"}" data-act="resopen" data-kind="${kind}" data-id="${esc(code)}">${flagEl(pc, "sm")}<b>${esc(pName(pc))}</b><small>${faN(n)}/${faN(CAP)}</small></button>`;
   const rowBtns = (kind, code) => `<div class="p3-act"><button class="btn sm" type="button" data-act="${kind}" data-id="${esc(code)}">ویرایش</button><button class="btn sm ic-btn del" type="button" data-act="harddel" data-kind="${kind}" data-id="${esc(code)}" title="حذف" aria-label="حذف">×</button></div>`;
   const off = x => x.status === "inactive";
   const ord = (x, y) => off(x) - off(y) || x.code.localeCompare(y.code);
   const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
   const sRows = sims.map(m => {
-    const accs = liveAccs.filter(a => a.simId === m.code).sort((x, y) => occupants(y.id).length - occupants(x.id).length), orphan = portalsList().filter(p => phoneOn(p.code, m.code).kind === "orphan");
-    const used = accs.length || orphan.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), local(S.emails.get(a.emailId)) || a.emailId, a.id)).join("")}${orphan.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="این شماره دیگر برای ${esc(pName(p.code))} ثبت‌شده حساب نشود">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><span>ثبت‌شده در VFS</span><small>×</small></button>`).join("")}</div>` : none;
+    const pcs = usedPcs(p => pSimId(p) === m.code), orphan = portalsList().filter(p => simTaken(p.code, m.code));
+    const used = pcs.length || orphan.length ? `<div class="chips">${pcs.map(pc => useChip(pc, "sim", m.code, usesS(pc, m.code).length)).join("")}${orphan.map(p => `<button type="button" class="rs-chip st-reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="این شماره دیگر برای ${esc(pName(p.code))} ثبت‌شده حساب نشود">${flagEl(p.code, "sm")}<b>${esc(pName(p.code))}</b><span>ثبت‌شده در VFS</span><small>×</small></button>`).join("")}</div>` : none;
     return `<tr class="${off(m) ? "rs-off" : ""}"><td><span class="tag">${esc(m.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="sim" data-id="${esc(m.code)}">${esc(prettyPhone(m.number))}</button>${off(m) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : m.operator || m.note ? `<small>${esc([m.operator, m.note].filter(Boolean).join(" · "))}</small>` : ""}</td><td>${used}</td><td>${rowBtns("sim", m.code)}</td></tr>`; }).join("");
   const eRows = ems.map(e => {
-    const accs = liveAccs.filter(a => a.emailId === e.code).sort((x, y) => occupants(y.id).length - occupants(x.id).length);
-    const used = accs.length ? `<div class="chips">${accs.map(a => chip(a.portal, accStatus(a), a.simId ? localPhone(S.sims.get(a.simId)?.number || "") || a.simId : "بدون شماره", a.id)).join("")}</div>` : none;
+    const pcs = usedPcs(p => p.emailId === e.code);
+    const used = pcs.length ? `<div class="chips">${pcs.map(pc => useChip(pc, "email", e.code, usesE(pc, e.code).length)).join("")}</div>` : none;
     return `<tr class="${off(e) ? "rs-off" : ""}"><td><span class="tag">${esc(e.code)}</span></td><td><button type="button" class="res-open mono" data-act="resopen" data-kind="email" data-id="${esc(e.code)}">${esc(e.address)}</button>${off(e) ? `<small class="rs-offtag">فعلاً استفاده نشه</small>` : ""}</td><td>${used}</td><td>${rowBtns("email", e.code)}</td></tr>`; }).join("");
-  const sFree = sims.filter(m => !off(m) && !liveAccs.some(a => a.simId === m.code)).length, sOff = sims.filter(off).length;
-  const eFree = ems.filter(e => !off(e) && !liveAccs.some(a => a.emailId === e.code)).length, eOff = ems.filter(off).length;
+  const sFree = sims.filter(m => !off(m) && !usedPcs(p => pSimId(p) === m.code).length).length, sOff = sims.filter(off).length;
+  const eFree = ems.filter(e => !off(e) && !usedPcs(p => p.emailId === e.code).length).length, eOff = ems.filter(off).length;
   const extra = (f, o) => [f ? `${faN(f)} بدون کشور` : "", o ? `${faN(o)} استفاده نشه` : ""].filter(Boolean).join(" · ");
   const all = `<div class="page-h"><div><h1>ایمیل و شماره</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ibtn i-sim" type="button" data-act="sim"><i><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></i>شماره جدید</button><button class="btn ibtn i-mail" type="button" data-act="email"><i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg></i>ایمیل جدید</button><button class="btn primary ibtn i-bulk" type="button" data-act="bulk"><i><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></i>افزودن گروهی</button></div></div>
 <!--RES-BODY-->
-    <section class="sec"><div class="sec-h"><h2>شماره‌ها ${cnt(S.sims.size, extra(sFree, sOff))}</h2></div>${S.sims.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>شماره</th><th>کشور و ایمیلی که با این شماره ست شده</th><th></th></tr></thead><tbody>${sRows}</tbody></table></div>` : `<div class="empty">شماره‌ای نیست.</div>`}</section>
-    <section class="sec"><div class="sec-h"><h2>ایمیل‌ها ${cnt(S.emails.size, extra(eFree, eOff))}</h2></div>${S.emails.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>آدرس</th><th>کشور و شماره‌ای که با این ایمیل ست شده</th><th></th></tr></thead><tbody>${eRows}</tbody></table></div>` : `<div class="empty">ایمیلی نیست.</div>`}</section>`;
+    <section class="sec"><div class="sec-h"><h2>شماره‌ها ${cnt(S.sims.size, extra(sFree, sOff))}</h2></div>${S.sims.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>شماره</th><th>کشورها · چند بار از ${faN(CAP)} بار</th><th></th></tr></thead><tbody>${sRows}</tbody></table></div>` : `<div class="empty">شماره‌ای نیست.</div>`}</section>
+    <section class="sec"><div class="sec-h"><h2>ایمیل‌ها ${cnt(S.emails.size, extra(eFree, eOff))}</h2></div>${S.emails.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>آدرس</th><th>کشورها · چند بار از ${faN(CAP)} بار</th><th></th></tr></thead><tbody>${eRows}</tbody></table></div>` : `<div class="empty">ایمیلی نیست.</div>`}</section>`;
   const [head, list] = all.split("<!--RES-BODY-->");
   const tog = `<div class="seg" role="tablist"><button type="button" class="${resView === "grid" ? "on" : ""}" data-act="resview" data-id="grid">نمای کلی</button><button type="button" class="${resView === "list" ? "on" : ""}" data-act="resview" data-id="list">جدول کامل</button></div>`;
   return head + tog + (resView === "list" ? list : resMatrix());
@@ -2005,7 +2043,7 @@ function renderRes(){
 let peopleCountry = "", peopleStatus = "";
 function renderPeople(){
   const q = peopleQ.trim().toLowerCase();
-  const base = S.people.filter(p => !q || [p.name, p.note, pName(p.portal), S.emails.get(p.emailId)?.address, S.sims.get(S.accounts.get(p.accountId)?.simId)?.number].join(" ").toLowerCase().includes(q));
+  const base = S.people.filter(p => !q || [p.name, p.note, pName(p.portal), S.emails.get(p.emailId)?.address, pSim(p)?.number].join(" ").toLowerCase().includes(q));
   const list = base.filter(p => (!peopleCountry || p.portal === peopleCountry) && (!peopleStatus || p.status === peopleStatus))
     .sort((a,b) => (a.status === "removed") - (b.status === "removed") || (b.addedAt || "").localeCompare(a.addedAt || ""));
   const cnt = pc => base.filter(p => p.portal === pc && p.status !== "removed").length;
@@ -2019,7 +2057,7 @@ function renderPeople(){
       ${[["", "همه وضعیت‌ها"], ["waitlist", "Waitlist"], ["booked", "وقت گرفت"], ["removed", "اتمام کار"]].map(([v, t]) => `<button type="button" class="fchip sm ${peopleStatus === v ? "on" : ""}" data-act="pstatus2" data-id="${v}">${t}${v ? ` <b>${faN(stCnt(v))}</b>` : ""}</button>`).join("")}</div>`;
   if (!list.length) return h + `<section class="sec"><div class="empty">کسی با این فیلتر پیدا نشد.</div></section>`;
   return h + `<section class="sec"><div class="ptable">${list.map(p => {
-    const a = S.accounts.get(p.accountId), m = a?.simId ? S.sims.get(a.simId) : null, e = S.emails.get(p.emailId);
+    const m = pSim(p), e = S.emails.get(p.emailId);
     const pill = {waitlist:"sun", booked:"ok", removed:""}[p.status] || "";
     return `<div class="prow3 ${p.status === "removed" ? "dim" : ""}" style="--cc:${colorOf(p.portal)}">
       <div class="p3-who">${flagEl(p.portal, "md")}<div><b>${esc(p.name)}</b><small>${esc(pName(p.portal))}</small></div></div>
@@ -2093,11 +2131,10 @@ const F = {
 const formData = () => Object.fromEntries(new FormData($("#sheetForm")).entries());
 function armDelete(onDelete){ const b = $("#delBtn"); if (!b) return; b.onclick = async () => { if (b.dataset.armed){ if (await onDelete() !== false) closeSheet(); } else { b.dataset.armed = "1"; b.textContent = "مطمئنید؟ دوباره بزنید"; } }; }
 
-function phoneOptions(pc, keep = ""){
-  return simsAll().map(m => { const on = phoneOn(pc, m.code), tot = phoneAccounts(m.code).length;
-    const mine = on.kind === "acc" && on.acc.simId === keep && keep;
-    const tail = mine ? "شماره همین اکانت" : on.kind === "free" ? `آزاد · ${faN(tot)} اکانت در کل` : on.kind === "acc" ? `قبلاً برای ${S.emails.get(on.acc.emailId)?.address || on.acc.emailId} استفاده شده` : `VFS گفته تکراری است`;
-    return [m.code, `${localPhone(m.number)} — ${tail}`, !(on.kind === "free" || mine)]; })
+function phoneOptions(pc){
+  return simsAll().map(m => { const n = usesS(pc, m.code).length, t = simTaken(pc, m.code);
+    const tail = t ? "VFS گفته تکراری است" : n >= CAP ? `پر (${faN(CAP)}/${faN(CAP)})` : n ? `${faN(n)}/${faN(CAP)} استفاده شده` : "استفاده نشده";
+    return [m.code, `${localPhone(m.number)} — ${tail}`, t || n >= CAP]; })
     .sort((a,b) => a[2] - b[2]);
 }
 // "register in this country": pick an email — an existing account with room goes straight to adding travellers; a free email walks through phone + result
@@ -2147,12 +2184,12 @@ function openAccount(id){
   openSheet(`${pName(pc)} · اکانت VFS`,
     `<div class="sc-cred">
       ${credLine("ایمیل", e.address)}
-      ${sim ? credLine("شماره", prettyPhone(sim.number), localPhone(sim.number)) : `<div><span class="lbl">شماره</span><span style="color:var(--muted)">ثبت نشده</span></div>`}
+      ${sim ? credLine("شماره اکانت", prettyPhone(sim.number), localPhone(sim.number)) : ""}
       <div><span class="lbl">وضعیت</span><span class="st st-${st}">${ST_LABEL[st]}</span></div>
       <div><span class="lbl">آخرین ورود</span><b style="font-size:13px">${esc(last)}</b>${a?.lastVerified === today() ? "" : `<button class="copy" type="button" data-act="ok" data-id="${esc(id)}">همین الان وارد شدم</button>`}</div>
     </div>
-    <div class="up-lbl" style="justify-content:space-between"><span>مسافران این اکانت</span>${capPill(occ.length)}</div>
-    ${occ.length ? `<div class="plist">${occ.map(p => `<div class="prow"><span><b>${esc(p.name)}</b> <span class="pill ${p.status === "booked" ? "ok" : "sun"}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? ` <span class="mono" style="font-size:12px">${esc(p.apptDate)}</span>` : ""}</span><span class="p3-act"><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></span></div>`).join("")}</div>` : `<div class="empty" style="padding:10px">هنوز مسافری روی این اکانت نیست.</div>`}
+    <div class="up-lbl" style="justify-content:space-between"><span>مسافران این ایمیل · ${faN(occ.length)}/${faN(CAP)}</span></div>
+    ${occ.length ? `<div class="plist">${occ.map(p => `<div class="prow"><span><b>${esc(p.name)}</b>${pSim(p) ? ` <span class="mono" style="font-size:12px;color:var(--muted)">${esc(prettyPhone(pSim(p).number))}</span>` : ""} <span class="pill ${p.status === "booked" ? "ok" : "sun"}">${esc(P_STATUS[p.status])}</span>${p.apptDate ? ` <span class="mono" style="font-size:12px">${esc(p.apptDate)}</span>` : ""}</span><span class="p3-act"><button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></span></div>`).join("")}</div>` : `<div class="empty" style="padding:10px">هنوز مسافری روی این اکانت نیست.</div>`}
     ${occ.length < CAP && (st === "active" || st === "check") ? `<button class="btn primary" type="button" data-act="addpeople" data-id="${esc(id)}" style="align-self:flex-start">+ افزودن مسافر</button>` : ""}
     `,
     null,
@@ -2161,7 +2198,7 @@ function openAccount(id){
 function addPeople(id, pre = []){
   const [pc, em] = id.split("__"), free = CAP - occupants(id).length;
   if (free <= 0) { toast("این اکانت پر است"); return; }
-  const a = S.accounts.get(id), sim = a?.simId ? S.sims.get(a.simId) : null;
+  const a = S.accounts.get(id);
   const byAt = (x, y) => (x.at || "").localeCompare(y.at || "");
   const here = S.passports.filter(x => x.portal === pc && x.status === "waiting").sort(byAt);
   const other = S.passports.filter(x => x.portal !== pc && x.status === "waiting").sort(byAt);
@@ -2183,7 +2220,7 @@ function addPeople(id, pre = []){
   };
   const drawCards = () => {
     const n = sel.size + manual().length;
-    $("#apCount").textContent = `${faN(n)} از ${faN(free)} جای خالی انتخاب شده`;
+    $("#apCount").textContent = `${faN(n)} انتخاب شده · این ایمیل ${faN(free)} جای خالی دارد`;
     $("#apHere").innerHTML = here.length ? here.map(card).join("") : `<div class="empty" style="padding:12px">پاسپورتی برای ${esc(pName(pc))} در انتظار ثبت نیست.</div>`;
     const o = $("#apOther"); if (o) o.innerHTML = other.map(card).join("");
     const btn = $("#sheetSave"); btn.textContent = n ? `اضافه کردن ${faN(n)} مسافر` : "اضافه کن"; setSaveEnabled(n > 0 && n <= free);
@@ -2196,7 +2233,8 @@ function addPeople(id, pre = []){
       drawCards(); });
   };
   openSheet(`مسافر · ${pName(pc)}`,
-    `<div class="sc-cred">${credLine("ایمیل", S.emails.get(em)?.address || em)}${sim ? credLine("شماره", prettyPhone(sim.number), localPhone(sim.number)) : ""}</div>
+    `<div class="sc-cred">${credLine("ایمیل", S.emails.get(em)?.address || em)}</div>
+    ${simSel(pc, a?.simId)}
     <div class="ap-add">
       <label class="dropz ap-drop" for="apFiles">${UP_ICON}<div><b>آپلود پاسپورت</b><br><span>عکس یا PDF پاسپورت · بعد از آپلود همین‌جا انتخاب می‌شود</span></div><input id="apFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"></label>
       <button type="button" class="ap-manual" id="apManual"><span class="ap-plus">+</span><div><b>مسافر بدون پاسپورت</b><br><span>اسم، فامیل، شماره، ملیت و انقضای پاسپورت را دستی وارد کنید</span></div></button>
@@ -2210,12 +2248,13 @@ function addPeople(id, pre = []){
       const pps = [...sel].map(pid => S.passports.find(x => x.id === pid)).filter(Boolean);
       if (!names.length && !pps.length) { toast("حداقل یک نفر انتخاب کنید"); return false; }
       if (names.length + pps.length > free) { toast(`فقط ${faN(free)} جا دارد`); return false; }
+      if (!simOk(pc, d.sim, names.length + pps.length)) return false;
       const all = [...pps.map(x => ({name:x.name || "بی‌نام", pp:x})), ...names.map(n => ({name:[n.firstName, n.lastName].filter(Boolean).join(" "), pp:null, m:n}))];
       for (const x of all){ const ref = db.collection("people").doc();
-        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, accountId:id, status:d.status, apptDate:d.apptDate, note:"", passportId:x.pp?.id || "", addedAt:today(), ...(x.m || {})}))) return false;
-        if (x.pp) await write(() => db.doc("passports/" + x.pp.id).update({status:"assigned", portal:pc, accountId:id, emailId:em, personId:ref.id})); }
+        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, simId:d.sim || "", accountId:id, status:d.status, apptDate:d.apptDate, note:"", passportId:x.pp?.id || "", addedAt:today(), ...(x.m || {})}))) return false;
+        if (x.pp) await write(() => db.doc("passports/" + x.pp.id).update({status:"assigned", portal:pc, accountId:id, emailId:em, simId:d.sim || "", personId:ref.id})); }
       await saveAccount(pc, em, {status:"active", lastVerified:today()});
-      await addLog(d.status === "booked" ? "booked" : "added", pc, {emailId:em, simId:a?.simId || "", note:all.map(x => x.name).join("، ")});
+      await addLog(d.status === "booked" ? "booked" : "added", pc, {emailId:em, simId:d.sim || "", note:all.map(x => x.name).join("، ")});
       toast(`${faN(all.length)} مسافر اضافه شد`); return true; }, "", "اضافه کن");
   const addRow = () => {
     if (sel.size + document.querySelectorAll(".mrow").length >= free) { toast(`فقط ${faN(free)} جا دارد`); return; }
@@ -2230,7 +2269,7 @@ function editPerson(pid){
   const p = S.people.find(x => x.id === pid); if (!p) return;
   openSheet(`مسافر: ${p.name}`,
     `${F.text("name","اسم",p.name,{req:true})}
-    ${(() => { const a = S.accounts.get(p.accountId), m = a?.simId ? S.sims.get(a.simId) : null, e = S.emails.get(p.emailId);
+    ${(() => { const m = pSim(p), e = S.emails.get(p.emailId);
       return `<div class="sc-cred"><div><span class="lbl">کشور</span>${flagEl(p.portal, "sm")}<b style="font-size:13px">${esc(pName(p.portal))}</b></div>${credLine("ایمیل", e?.address || p.emailId)}${m ? credLine("شماره", prettyPhone(m.number), localPhone(m.number)) : `<div><span class="lbl">شماره</span><span style="color:var(--muted)">ثبت نشده</span></div>`}</div>`; })()}
     <div class="two">${F.sel("status","وضعیت",P_OPTS,p.status)}${F.date("apptDate","تاریخ وقت",p.apptDate || "")}</div>${F.area("note","یادداشت",p.note || "")}`,
     async () => { const d = formData();
@@ -2247,12 +2286,12 @@ function confirmHardDelete(kind, code){
   const shown = isSim ? prettyPhone(rec.number) : rec.address;
   const need = isSim ? localPhone(rec.number).slice(-4) : rec.address.split("@")[0];
   const accs = [...S.accounts.values()].filter(a => (isSim ? a.simId === code : a.emailId === code) && accStatus(a) !== "unused");
-  const ppl = S.people.filter(p => p.status !== "removed" && accs.some(a => a.id === p.accountId));
+  const ppl = S.people.filter(p => p.status !== "removed" && (isSim ? pSimId(p) === code : p.emailId === code));
   $("#dzTitle").textContent = isSim ? "حذف کامل شماره از پنل" : "حذف کامل ایمیل از پنل";
   $("#dzBody").innerHTML = `<div class="dz-what">${esc(shown)}</div>
     <div>این ${isSim ? "شماره" : "ایمیل"} برای همیشه از پنل پاک می‌شود و برگشت ندارد.</div>
     ${accs.length ? `<div><b>به این‌ها وصل است:</b><ul>${accs.map(a => `<li>VFS ${esc(pName(a.portal))} · ${esc(isSim ? (S.emails.get(a.emailId)?.address || a.emailId) : (a.simId ? localPhone(S.sims.get(a.simId)?.number) : "بدون شماره"))} · ${faN(occupants(a.id).length)} مسافر</li>`).join("")}</ul></div>` : ""}
-    ${ppl.length ? `<div style="color:var(--red-ink);font-weight:800">${faN(ppl.length)} مسافر در اکانت‌های این ${isSim ? "شماره" : "ایمیل"} هستند.</div>` : ""}
+    ${ppl.length ? `<div style="color:var(--red-ink);font-weight:800">${faN(ppl.length)} مسافر با این ${isSim ? "شماره" : "ایمیل"} ثبت شده‌اند.</div>` : ""}
     <div style="color:var(--muted)">اگر فقط نمی‌خواهید دیگر استفاده شود، به جای حذف وضعیتش را «فعلاً استفاده نشه» کنید، یا آن را با یک شماره آزاد جابجا کنید.</div>`;
   $("#dzLbl").textContent = isSim ? `برای تأیید، ۴ رقم آخر شماره را بنویسید (${need.replace(/\d/g, "•")})` : `برای تأیید، قسمت قبل از @ را بنویسید`;
   const inp = $("#dzInput"), go = $("#dzGo"); inp.value = ""; go.disabled = true;
@@ -2292,21 +2331,23 @@ function editEmail(id){
 function swapSim(code){
   const old = S.sims.get(code); if (!old) return;
   const accs = [...S.accounts.values()].filter(a => a.simId === code && accStatus(a) !== "unused" && accStatus(a) !== "none");
-  const pcs = [...new Set(accs.map(a => a.portal))];
-  const opts = simsAll().filter(x => x.code !== code && pcs.every(pc => phoneOn(pc, x.code).kind === "free"));
-  const accHTML = accs.length ? accs.map(a => `<div class="swap-acc">${flagEl(a.portal, "sm")}<b>${esc(pName(a.portal))}</b><span class="mono">${esc(S.emails.get(a.emailId)?.address || a.emailId)}</span><small>${faN(occupants(a.id).length)} مسافر</small></div>`).join("") : `<div style="color:var(--muted)">این شماره به هیچ اکانتی وصل نیست؛ فقط «فعلاً استفاده نشه» می‌شود.</div>`;
+  const ppl = S.people.filter(p => p.status !== "removed" && pSimId(p) === code);
+  const pcs = [...new Set([...accs.map(a => a.portal), ...ppl.map(p => p.portal)])];
+  const opts = simsAll().filter(x => x.code !== code && pcs.every(pc => simLeft(pc, x.code) >= usesS(pc, code).length));
+  const accHTML = accs.length ? accs.map(a => `<div class="swap-acc">${flagEl(a.portal, "sm")}<b>${esc(pName(a.portal))}</b><span class="mono">${esc(S.emails.get(a.emailId)?.address || a.emailId)}</span><small>${faN(occupants(a.id).length)} مسافر</small></div>`).join("") : ppl.length ? `<div class="swap-acc"><small>${faN(ppl.length)} مسافر با این شماره</small></div>` : `<div style="color:var(--muted)">این شماره برای هیچ مسافری استفاده نشده؛ فقط «فعلاً استفاده نشه» می‌شود.</div>`;
   const optHTML = opts.length ? opts.map((x, i) => `<label class="swap-opt"><input type="radio" name="to" value="${esc(x.code)}" ${i ? "" : "checked"}><span class="mono">${esc(prettyPhone(x.number))}</span><small>${esc(x.code)}${x.operator ? " · " + esc(x.operator) : ""}</small></label>`).join("") : `<div style="color:var(--red-ink);font-weight:700">شماره آزادی برای ${esc(pcs.map(pName).join("، ") || "این کار")} نمانده. اول یک شماره جدید اضافه کنید.</div>`;
   openSheet(`جابجایی ${prettyPhone(old.number)}`,
     `<div class="task-lbl">اکانت‌هایی که منتقل می‌شوند</div><div class="swap-list">${accHTML}</div>
      <div class="task-lbl" style="margin-top:14px">شماره جدید</div><div class="swap-list">${optHTML}</div>
      <div class="swap-note">شماره قدیمی «فعلاً استفاده نشه» می‌شود و سابقه‌اش می‌ماند. شماره را در پروفایل VFS هم عوض کنید.</div>`,
-    opts.length || !accs.length ? async () => {
-      const to = accs.length ? formData().to : ""; if (accs.length && !to) { toast("یک شماره انتخاب کنید"); return false; }
+    opts.length || !(accs.length || ppl.length) ? async () => {
+      const to = accs.length || ppl.length ? formData().to : ""; if ((accs.length || ppl.length) && !to) { toast("یک شماره انتخاب کنید"); return false; }
       for (const a of accs){
         if (!await saveAccount(a.portal, a.emailId, {simId:to})) return false;
         await setReg(a.portal, to, "registered", a.emailId);
         await addLog("sim_swap", a.portal, {emailId:a.emailId, simId:to, note:`از ${localPhone(old.number)} به ${localPhone(S.sims.get(to).number)}`});
       }
+      if (to) for (const p of ppl) if (!await write(() => db.doc("people/" + p.id).update({simId:to}))) return false;
       const ok = await write(() => db.doc("sims/" + code).set({...old, status:"inactive"}));
       if (ok) toast(accs.length ? "جابجا شد" : "کنار گذاشته شد"); return ok;
     } : null, "", accs.length ? "جابجا کن" : "فعلاً استفاده نشه");
@@ -2508,20 +2549,22 @@ function assignPassports(){
   const noName = items.filter(x => !x.name.trim()); if (noName.length) { toast(`${faN(noName.length)} پاسپورت اسم ندارد؛ اول اسمش را وارد کنید`); return; }
   const pc = items[0].portal;
   const accs = emailsAll().map(e => ({e, id:accId(pc, e.code), a:S.accounts.get(accId(pc, e.code))})).filter(x => ["active","check"].includes(accStatus(x.a)))
-    .map(x => ({...x, free:CAP - occupants(x.id).length, sim:x.a.simId ? S.sims.get(x.a.simId) : null})).filter(x => x.free > 0).sort((a,b) => b.free - a.free);
+    .map(x => ({...x, free:CAP - occupants(x.id).length})).filter(x => x.free > 0).sort((a,b) => b.free - a.free);
   const fit = accs.filter(x => x.free >= items.length);
   if (!accs.length) { toast(`روی ${pName(pc)} اکانت با جای خالی نیست؛ اول اکانت بسازید`); return; }
   if (!fit.length) { toast(`هیچ اکانتی ${faN(items.length)} جای خالی ندارد؛ تعداد کمتری انتخاب کنید (بیشترین: ${faN(accs[0].free)})`); return; }
   openSheet(`اضافه به اکانت · ${pName(pc)}`,
     `<div class="note">${items.map(x => esc(x.name)).join("، ")}</div>
-    ${F.sel("acc","کدام اکانت؟",accs.map(x => [x.id, `${x.e.address}${x.sim ? " · " + localPhone(x.sim.number) : ""} — ${faN(x.free)} جای خالی${accStatus(x.a) === "check" ? " (باید چک شود)" : ""}`, x.free < items.length]),fit[0].id)}
+    ${F.sel("acc","کدام ایمیل؟",accs.map(x => [x.id, `${x.e.address} — ${faN(CAP - x.free)}/${faN(CAP)} استفاده شده${accStatus(x.a) === "check" ? " (باید چک شود)" : ""}`, x.free < items.length]),fit[0].id)}
+    ${simSel(pc, fit[0].a?.simId, items.length)}
     <div class="two">${F.sel("status","وضعیت",[["waitlist","Waitlist"],["booked","وقت گرفته شد"]],"waitlist")}${F.date("apptDate","تاریخ وقت","")}</div>`,
-    async () => { const d = formData(), em = d.acc.split("__")[1], a = S.accounts.get(d.acc);
+    async () => { const d = formData(), em = d.acc.split("__")[1];
+      if (!simOk(pc, d.sim, items.length)) return false;
       for (const x of items){ const ref = db.collection("people").doc();
-        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, accountId:d.acc, status:d.status, apptDate:d.apptDate, note:"", passportId:x.id, addedAt:today()}))) return false;
-        await write(() => db.doc("passports/" + x.id).update({status:"assigned", accountId:d.acc, emailId:em, personId:ref.id})); }
+        if (!await write(() => ref.set({name:x.name, portal:pc, emailId:em, simId:d.sim || "", accountId:d.acc, status:d.status, apptDate:d.apptDate, note:"", passportId:x.id, addedAt:today()}))) return false;
+        await write(() => db.doc("passports/" + x.id).update({status:"assigned", accountId:d.acc, emailId:em, simId:d.sim || "", personId:ref.id})); }
       await saveAccount(pc, em, {status:"active", lastVerified:today()});
-      await addLog(d.status === "booked" ? "booked" : "added", pc, {emailId:em, simId:a?.simId || "", note:items.map(x => x.name).join("، ")});
+      await addLog(d.status === "booked" ? "booked" : "added", pc, {emailId:em, simId:d.sim || "", note:items.map(x => x.name).join("، ")});
       picked.clear(); toast(`${faN(items.length)} نفر به اکانت اضافه شد`); return true; }, "", "اضافه کن");
 }
 
