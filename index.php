@@ -1266,6 +1266,23 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .wl-acc2 .mono{font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .wl-acc2:hover{color:var(--accent)}
 .wl-acts{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+/* compact card grid for appointments and waitlist: less scrolling */
+.wl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:12px 16px 16px}
+.wl-cards .wl-r,.wl-cards .wl-r.bk{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);position:relative}
+.wl-cards .wl-r.bk{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:10px}
+.wl-cards .wl-r.bk .wl-acc2,.wl-cards .wl-r.bk .wl-acts{grid-column:1/-1}
+.wl-cards .wl-date{width:44px;height:44px}
+.wl-cards .wl-date b{font-size:var(--fs-md)}
+.wl-cards .wl-name b{font-size:var(--fs-sm)}
+.wl-cards .wl-acc2{align-items:flex-start;min-width:0;max-width:100%;border-top:1px dashed var(--line);padding-top:5px}
+.wl-cards .wl-acc2 .mono{direction:ltr;unicode-bidi:isolate}
+.wl-cards .wl-acts{justify-content:flex-start;flex-wrap:wrap;gap:5px}
+.wl-cards .btn.sm{padding:4px 10px;min-height:0;font-size:var(--fs-xs)}
+.wl-cards .ic-btn{width:28px;height:28px;padding:0}
+.wl-tiles{gap:8px;margin-bottom:10px}
+.wl-tile{flex-direction:row;align-items:baseline;gap:8px;padding:8px 14px}
+.wl-tile b{font-size:var(--fs-xl)}
+@media (max-width:640px){.wl-cards{grid-template-columns:minmax(0,1fr);padding:10px}}
 .wl-group + .wl-group{border-top:6px solid var(--soft)}
 .wl-gh{display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--soft);font-size:var(--fs-sm)}
 .wl-gh span{margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:var(--fs-xs)}
@@ -1923,12 +1940,12 @@ function renderWl(){
   const inC = p => !wlCountry || p.portal === wlCountry;
   const acc = p => { const e = S.emails.get(p.emailId), m = pSim(p);
     return `<button type="button" class="wl-acc2" data-act="acc" data-id="${esc(p.accountId)}" title="باز کردن اکانت"><span class="mono">${esc(e?.address || p.emailId)}</span>${m ? `<span class="mono">${esc(prettyPhone(m.number))}</span>` : ""}</button>`; };
-  const acts = p => `<div class="wl-acts">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div>`;
+  const acts = p => `<div class="wl-acts">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm ic-btn" type="button" data-act="person" data-id="${esc(p.id)}" title="ویرایش" aria-label="ویرایش ${esc(p.name)}">✎</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div>`;
   const fmt = (iso, o) => { try { return new Intl.DateTimeFormat("fa-IR-u-ca-gregory", o).format(new Date(iso + "T12:00:00")); } catch { return iso; } };
   // 1) appointments, soonest first
   if (wlTab !== "waitlist"){
     const bk = live.filter(p => p.status === "booked" && inC(p) && (wlTab !== "week" || inWeek(p))).sort((x, y) => (x.apptDate || "9").localeCompare(y.apptDate || "9"));
-    h += `<section class="sec"><div class="sec-h"><h2>📅 وقت‌های گرفته‌شده <small>${faN(bk.length)}</small></h2></div>${bk.length ? `<div class="wl-list2">${bk.map(p => { const d = days(p);
+    h += `<section class="sec"><div class="sec-h"><h2>📅 وقت‌های گرفته‌شده <small>${faN(bk.length)}</small></h2></div>${bk.length ? `<div class="wl-list2 wl-cards">${bk.map(p => { const d = days(p);
       const rel = d === null ? "بدون تاریخ" : d < 0 ? "گذشته" : d === 0 ? "امروز" : d === 1 ? "فردا" : `${faN(d)} روز دیگر`;
       return `<div class="wl-r bk ${d !== null && d < 0 ? "past" : d !== null && d <= 2 ? "soon" : ""}">
         <div class="wl-date">${p.apptDate ? `<b>${fmt(p.apptDate, {day:"numeric"})}</b><span>${fmt(p.apptDate, {month:"short"})}</span>` : `<b>—</b>`}</div>
@@ -1939,7 +1956,7 @@ function renderWl(){
   if (wlTab === "" || wlTab === "waitlist"){
     const wl = live.filter(p => p.status === "waitlist" && inC(p));
     h += `<section class="sec"><div class="sec-h"><h2>⏳ در ویت‌لیست <small>${faN(wl.length)}</small></h2></div>${wl.length ? cs.filter(c => wl.some(p => p.portal === c.code)).map(c => { const g = wl.filter(p => p.portal === c.code).sort((x, y) => (x.addedAt || "").localeCompare(y.addedAt || ""));
-      return `<div class="wl-group"><div class="wl-gh">${flagEl(c.code, "sm")}<b>${esc(pName(c.code))}</b><span>${faN(g.length)} نفر</span></div><div class="wl-list2">${g.map(p => `<div class="wl-r">
+      return `<div class="wl-group"><div class="wl-gh">${flagEl(c.code, "sm")}<b>${esc(pName(c.code))}</b><span>${faN(g.length)} نفر</span></div><div class="wl-list2 wl-cards">${g.map(p => `<div class="wl-r">
         <div class="wl-main"><div class="wl-name"><b>${esc(p.name)}</b></div><div class="wl-meta"><span>از ${esc(rel(p.addedAt))}</span></div></div>
         ${acc(p)}${acts(p)}</div>`).join("")}</div></div>`; }).join("") : `<div class="empty">کسی در ویت‌لیست نیست.</div>`}</section>`;
   }
