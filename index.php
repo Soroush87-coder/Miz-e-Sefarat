@@ -2326,12 +2326,30 @@ function editPerson(pid){
   const p = S.people.find(x => x.id === pid); if (!p) return;
   openSheet(`مسافر: ${p.name}`,
     `${F.text("name","اسم",p.name,{req:true})}
-    ${(() => { const m = pSim(p), e = S.emails.get(p.emailId);
-      return `<div class="sc-cred"><div><span class="lbl">کشور</span>${flagEl(p.portal, "sm")}<b style="font-size:13px">${esc(pName(p.portal))}</b></div>${credLine("ایمیل", e?.address || p.emailId)}${m ? credLine("شماره", prettyPhone(m.number), localPhone(m.number)) : `<div><span class="lbl">شماره</span><span style="color:var(--muted)">ثبت نشده</span></div>`}</div>`; })()}
+    ${(() => { const pc = p.portal, mySim = pSimId(p);
+      // this traveller's own email and phone; counts leave this traveller out, so its current pick never looks full
+      const eUse = em => usesE(pc, em).filter(x => x.id !== pid).length, sUse = sm => usesS(pc, sm).filter(x => x.id !== pid).length;
+      const eOpts = [...S.emails.values()].sort((a, b) => a.code.localeCompare(b.code)).map(e => { const n = eUse(e.code), me = e.code === p.emailId;
+        return [e.code, `${e.address} — ${faN(n)}/${faN(CAP)}${e.status === "inactive" ? " · فعلاً استفاده نشه" : ""}`, !me && n >= CAP]; });
+      const sOpts = [...S.sims.values()].sort((a, b) => a.code.localeCompare(b.code)).map(m => { const n = sUse(m.code), me = m.code === mySim, t = !me && simTaken(pc, m.code);
+        return [m.code, `${localPhone(m.number)} — ${t ? "VFS گفته تکراری است" : `${faN(n)}/${faN(CAP)}`}${m.status === "inactive" ? " · فعلاً استفاده نشه" : ""}`, !me && (t || n >= CAP)]; });
+      return `<div class="sc-cred"><div><span class="lbl">کشور</span>${flagEl(pc, "sm")}<b style="font-size:13px">${esc(pName(pc))}</b></div></div>
+        <div class="two">${F.sel("pEm", "ایمیل این مسافر", eOpts, p.emailId)}${F.sel("pSim", "شماره این مسافر", [["", "— بدون شماره —"], ...sOpts], mySim)}</div>
+        <div style="margin-top:-6px;font-size:var(--fs-xs);color:var(--muted)">فقط برای همین مسافر عوض می‌شود. عدد کنار هر کدام: چند بار از ${faN(CAP)} بار برای ${esc(pName(pc))} استفاده شده.</div>`; })()}
     <div class="two">${F.sel("status","وضعیت",P_OPTS,p.status)}${F.date("apptDate","تاریخ وقت",p.apptDate || "")}</div>${F.area("note","یادداشت",p.note || "")}`,
     async () => { const d = formData();
       const doneAt = d.status === "removed" ? (p.status === "removed" ? p.doneAt || today() : today()) : "";
-      const ok = await write(() => db.doc("people/" + pid).update({name:d.name.trim(), status:d.status, apptDate:d.apptDate, note:d.note.trim(), doneAt}));
+      const ch = {}, pc = p.portal;
+      if (d.pEm && d.pEm !== p.emailId){
+        if (usesE(pc, d.pEm).filter(x => x.id !== pid).length >= CAP){ toast(`این ایمیل برای ${pName(pc)} پر است`); return false; }
+        Object.assign(ch, {emailId:d.pEm, accountId:accId(pc, d.pEm)}); }
+      if ((d.pSim || "") !== pSimId(p)){
+        if (d.pSim && usesS(pc, d.pSim).filter(x => x.id !== pid).length >= CAP){ toast(`این شماره برای ${pName(pc)} پر است`); return false; }
+        ch.simId = d.pSim || ""; }
+      const ok = await write(() => db.doc("people/" + pid).update({name:d.name.trim(), status:d.status, apptDate:d.apptDate, note:d.note.trim(), doneAt, ...ch}));
+      if (ok && ch.emailId && !["active", "check"].includes(accStatus(S.accounts.get(ch.accountId)))) await saveAccount(pc, ch.emailId, {status:"active", lastVerified:today()});
+      if (ok && (ch.emailId || "simId" in ch)) await addLog("edit", pc, {emailId:ch.emailId || p.emailId, simId:ch.simId ?? pSimId(p), note:`${d.name.trim()}: ایمیل/شماره عوض شد`});
+      if (ok && p.passportId && (ch.emailId || "simId" in ch)) await write(() => db.doc("passports/" + p.passportId).update({...(ch.emailId ? {emailId:ch.emailId, accountId:ch.accountId} : {}), ...("simId" in ch ? {simId:ch.simId} : {})}));
       if (ok && d.status !== p.status) await addLog(d.status === "booked" ? "booked" : "status", p.portal, {emailId:p.emailId, note:`${d.name.trim()}: ${P_STATUS[d.status]}${d.apptDate ? " · " + d.apptDate : ""}`});
       if (ok) toast("ذخیره شد"); return ok; },
     `<button class="btn sm ghost-red" type="button" data-act="pdel" data-id="${esc(pid)}">حذف مسافر</button>`);
@@ -2368,7 +2386,7 @@ function confirmHardDelete(kind, code){
 function editSim(id){
   const m = S.sims.get(id), code = m ? m.code : nextCode("SIM", S.sims.keys());
   openSheet(m ? `ویرایش ${code}` : "شماره جدید",
-    `${F.text("number","شماره",m ? localPhone(m.number) : "",{ltr:true,req:true})}<div class="two">${F.text("operator","اپراتور",m?.operator || "")}${F.date("expiry","انقضا",m?.expiry || "")}</div>
+    `${F.text("number","شماره",m ? localPhone(m.number) : "",{ltr:true,req:true,hint:m ? "اگر این عدد را عوض کنید، برای همهٔ مسافرهایی که با این شماره ثبت شده‌اند عوض می‌شود. برای یک مسافر، «ویرایش» همان مسافر را بزنید." : ""})}<div class="two">${F.text("operator","اپراتور",m?.operator || "")}${F.date("expiry","انقضا",m?.expiry || "")}</div>
     ${F.sel("status","وضعیت",[["active","فعال"],["inactive","فعلاً استفاده نشه"]],m?.status === "inactive" ? "inactive" : "active")}${F.text("note","یادداشت",m?.note || "")}`,
     async () => { const d = formData(), number = normPhone(d.number);
       const bad = simProblem(number, code); if (bad) { toast(bad); return false; }
@@ -2412,13 +2430,13 @@ function swapSim(code){
 function simProblem(number, selfCode){
   if (!/^\+\d{9,15}$/.test(number)) return "شماره درست نیست";
   const dup = [...S.sims.values()].find(x => x.number === number && x.code !== selfCode);
-  return dup ? `این شماره قبلاً با کد ${dup.code} ثبت شده` : "";
+  return dup ? `این شماره از قبل در لیست هست: ${dup.code}${dup.status === "inactive" ? " (فعلاً استفاده نشه)" : ""}. برای عوض کردن شمارهٔ یک مسافر، «ویرایش» همان مسافر را بزنید.` : "";
 }
 function emailProblem(addr, selfCode){
   const a = addr.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(a)) return "ایمیل درست نیست";
   const dup = [...S.emails.values()].find(x => x.address === a && x.code !== selfCode);
-  return dup ? `این ایمیل قبلاً با کد ${dup.code} ثبت شده` : "";
+  return dup ? `این ایمیل از قبل در لیست هست: ${dup.code}${dup.status === "inactive" ? " (فعلاً استفاده نشه)" : ""}. برای عوض کردن ایمیل یک مسافر، «ویرایش» همان مسافر را بزنید.` : "";
 }
 function liveCheck(fieldId, fn){
   const inp = $("#" + fieldId); if (!inp) return;
