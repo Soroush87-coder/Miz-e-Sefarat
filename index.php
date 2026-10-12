@@ -1183,6 +1183,36 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .pc-ck{position:absolute;top:8px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;background:var(--accent);color:#fff;opacity:0;transform:scale(.6);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
 .pc-t[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
 .pc-t[aria-pressed="true"] .pc-ck{opacity:1;transform:none}
+/* Waitlist page: tiles, compact traveller lines */
+.wl-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.wl-tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 18px;border-radius:var(--r-lg);border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;text-align:right;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+.wl-tile:hover{transform:translateY(-2px)}
+.wl-tile b{font-size:var(--fs-2xl);font-weight:800;line-height:1.1}
+.wl-tile span{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
+.wl-tile.sun b{color:var(--amber-ink)}.wl-tile.ok b{color:var(--green-ink)}.wl-tile.wk b{color:var(--accent)}
+.wl-tile.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.wl-list2{display:flex;flex-direction:column}
+.wl-r{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) auto;gap:14px;align-items:center;padding:10px 18px;border-top:1px solid var(--line)}
+.wl-r.bk{grid-template-columns:58px minmax(0,1.3fr) minmax(0,1.2fr) auto}
+.wl-r:first-child{border-top:0}
+.wl-r.past{opacity:.55}
+.wl-date{display:flex;flex-direction:column;align-items:center;justify-content:center;width:52px;height:52px;border-radius:var(--r-md);background:var(--green-soft);color:var(--green-ink);line-height:1.1}
+.wl-r.soon .wl-date{background:var(--amber-soft);color:var(--amber-ink)}
+.wl-date b{font-size:var(--fs-lg);font-weight:800}.wl-date span{font-size:var(--fs-2xs);font-weight:700}
+.wl-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.wl-name{display:flex;align-items:center;gap:8px;min-width:0}.wl-name b{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted)}
+.wl-rel{font-weight:800;color:var(--ink)}
+.wl-acc2{display:flex;flex-direction:column;align-items:flex-end;gap:1px;border:0;background:none;padding:0;font:inherit;color:var(--muted);cursor:pointer;min-width:0;direction:ltr;text-align:left}
+.wl-acc2 .mono{font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.wl-acc2:hover{color:var(--accent)}
+.wl-acts{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+.wl-group + .wl-group{border-top:6px solid var(--soft)}
+.wl-gh{display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--soft);font-size:var(--fs-sm)}
+.wl-gh span{margin-inline-start:auto;color:var(--muted);font-weight:700;font-size:var(--fs-xs)}
+@media (max-width:720px){.wl-tiles{gap:8px}.wl-tile{padding:10px 12px}.wl-tile b{font-size:var(--fs-xl)}
+  .wl-r,.wl-r.bk{grid-template-columns:auto minmax(0,1fr);gap:8px 12px}.wl-r:not(.bk) .wl-main{grid-column:1/-1}
+  .wl-acc2{grid-column:1/-1;align-items:flex-start}.wl-acts{grid-column:1/-1;justify-content:flex-start}}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1751,37 +1781,41 @@ async function queueAct(a, key){
 }
 
 // ---------- waitlist board: country → account → travellers ----------
-let wlShow = "open";   // open = waitlist + booked, all = everything
+let wlShow = "open", wlTab = "", wlCountry = "";   // wlTab: "" all · "waitlist" · "booked" · "week"
+// Waitlist & appointments: one compact line per traveller — appointments by date first, then the waitlist by country
 function renderWl(){
-  const keep = p => wlShow === "all" ? true : (p.status === "waitlist" || p.status === "booked");
-  const ppl = S.people.filter(keep);
-  const tot = s => S.people.filter(p => p.status === s).length;
-  let h = `<div class="page-h"><div><h1>ویت‌لیست و وقت‌ها</h1></div>
-  <button class="btn primary" type="button" data-act="readappt">خواندن نامه تأیید وقت</button></div>
-    <div class="wl-sum"><div><b>${faN(tot("waitlist"))}</b><span>در ویت‌لیست</span></div><div><b>${faN(tot("booked"))}</b><span>وقت گرفته</span></div><div><b>${faN(new Set(ppl.map(p => p.accountId)).size)}</b><span>اکانت درگیر</span></div></div>`;
-  const countries = portalsList().filter(c => ppl.some(p => p.portal === c.code));
-  if (!countries.length) return h + `<section class="sec"><div class="empty">هنوز مسافری در Waitlist نیست.</div></section>`;
-  for (const c of countries){
-    const cp = ppl.filter(p => p.portal === c.code);
-    const accIds = [...new Set(cp.map(p => p.accountId))];
-    h += `<section class="qsec"><div class="qhead"${flagBg(c.code)}><h2>${flagEl(c.code, "md")}${esc(pName(c.code))}</h2><span class="qn">${faN(cp.filter(p => p.status === "waitlist").length)} در ویت‌لیست · ${faN(cp.filter(p => p.status === "booked").length)} وقت گرفته</span></div><div class="tasks">`;
-    for (const aid of accIds){
-      const a = S.accounts.get(aid), e = S.emails.get(a?.emailId || aid.split("__")[1]), m = a?.simId ? S.sims.get(a.simId) : null;
-      const list = cp.filter(p => p.accountId === aid).sort((x, y) => (x.status === "booked") - (y.status === "booked") || (x.apptDate || "").localeCompare(y.apptDate || ""));
-      const waiting = list.filter(p => p.status === "waitlist");
-      h += `<div class="wl-acc">
-        <div class="wl-acc-h"><div class="sc-cred" style="flex:1">${credLine("ایمیل", e?.address || aid)}${m ? credLine("شماره", prettyPhone(m.number), localPhone(m.number)) : ""}</div>
-          <div class="wl-acc-side">${capPill(occupants(aid).length)}${vfsBtn(c.code)}</div></div>
-        <div class="wl-list">${list.map(p => {
-          const pp = p.passportId ? S.passports.find(x => x.id === p.passportId) : null;
-          const booked = p.status === "booked";
-          return `<div class="wl-row ${booked ? "bk" : ""}">
-            <div class="wl-who"><b>${esc(p.name)}</b></div>
-            <div class="wl-st">${booked ? `<span class="pill ok">وقت گرفته</span><b class="mono">${esc(p.apptDate || "—")}</b>${p.apptTime ? `<small class="mono">${esc(p.apptTime)}</small>` : ""}` : p.status === "waitlist" ? `<span class="pill sun">Waitlist</span>` : `<span class="pill">${esc(P_STATUS[p.status])}</span>`}</div>
-            <div class="wl-act">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div></div>`; }).join("")}</div>
-      </div>`;
-    }
-    h += `</div></section>`;
+  const live = S.people.filter(p => p.status === "waitlist" || p.status === "booked");
+  const days = p => p.apptDate ? -ago(p.apptDate) : null;        // days until the appointment (negative = past)
+  const inWeek = p => p.status === "booked" && days(p) !== null && days(p) >= 0 && days(p) <= 7;
+  const nW = live.filter(p => p.status === "waitlist").length, nB = live.filter(p => p.status === "booked").length, nWk = live.filter(inWeek).length;
+  const tile = (k, n, t, cls) => `<button type="button" class="wl-tile ${cls} ${wlTab === k ? "on" : ""}" data-act="wltab" data-id="${wlTab === k ? "" : k}"><b>${faN(n)}</b><span>${t}</span></button>`;
+  const cs = portalsList().filter(c => live.some(p => p.portal === c.code));
+  let h = `<div class="page-h"><div><h1>ویت‌لیست و وقت‌ها</h1></div><button class="btn primary" type="button" data-act="readappt">خواندن نامه تأیید وقت</button></div>
+    <div class="wl-tiles">${tile("waitlist", nW, "در ویت‌لیست", "sun")}${tile("booked", nB, "وقت گرفته", "ok")}${tile("week", nWk, "وقت تا ۷ روز آینده", "wk")}</div>
+    ${cs.length > 1 ? `<div class="fchips"><button type="button" class="fchip ${wlCountry ? "" : "on"}" data-act="wlc" data-id="">همه</button>${cs.map(c => `<button type="button" class="fchip ${wlCountry === c.code ? "on" : ""}" data-act="wlc" data-id="${esc(c.code)}">${flagEl(c.code, "sm")}${esc(pName(c.code))} <b>${faN(live.filter(p => p.portal === c.code).length)}</b></button>`).join("")}</div>` : ""}`;
+  if (!live.length) return h + `<section class="sec"><div class="empty">هنوز مسافری در ویت‌لیست نیست.</div></section>`;
+  const inC = p => !wlCountry || p.portal === wlCountry;
+  const acc = p => { const a = S.accounts.get(p.accountId), e = S.emails.get(p.emailId), m = a?.simId ? S.sims.get(a.simId) : null;
+    return `<button type="button" class="wl-acc2" data-act="acc" data-id="${esc(p.accountId)}" title="باز کردن اکانت"><span class="mono">${esc(e?.address || p.emailId)}</span>${m ? `<span class="mono">${esc(prettyPhone(m.number))}</span>` : ""}</button>`; };
+  const acts = p => `<div class="wl-acts">${p.status === "waitlist" ? `<button class="btn sm primary" type="button" data-act="book" data-id="${esc(p.id)}">ثبت وقت</button>` : ""}<button class="btn sm" type="button" data-act="person" data-id="${esc(p.id)}">ویرایش</button><button class="btn sm ic-btn" type="button" data-act="pfinish" data-id="${esc(p.id)}" title="اتمام کار" aria-label="اتمام کار ${esc(p.name)}">✓</button><button class="btn sm ic-btn del" type="button" data-act="pdel" data-id="${esc(p.id)}" title="حذف" aria-label="حذف ${esc(p.name)}">×</button></div>`;
+  const fmt = (iso, o) => { try { return new Intl.DateTimeFormat("fa-IR-u-ca-gregory", o).format(new Date(iso + "T12:00:00")); } catch { return iso; } };
+  // 1) appointments, soonest first
+  if (wlTab !== "waitlist"){
+    const bk = live.filter(p => p.status === "booked" && inC(p) && (wlTab !== "week" || inWeek(p))).sort((x, y) => (x.apptDate || "9").localeCompare(y.apptDate || "9"));
+    h += `<section class="sec"><div class="sec-h"><h2>📅 وقت‌های گرفته‌شده <small>${faN(bk.length)}</small></h2></div>${bk.length ? `<div class="wl-list2">${bk.map(p => { const d = days(p);
+      const rel = d === null ? "بدون تاریخ" : d < 0 ? "گذشته" : d === 0 ? "امروز" : d === 1 ? "فردا" : `${faN(d)} روز دیگر`;
+      return `<div class="wl-r bk ${d !== null && d < 0 ? "past" : d !== null && d <= 2 ? "soon" : ""}">
+        <div class="wl-date">${p.apptDate ? `<b>${fmt(p.apptDate, {day:"numeric"})}</b><span>${fmt(p.apptDate, {month:"short"})}</span>` : `<b>—</b>`}</div>
+        <div class="wl-main"><div class="wl-name">${flagEl(p.portal, "sm")}<b>${esc(p.name)}</b></div><div class="wl-meta"><span class="wl-rel">${rel}</span>${p.apptDate ? `<span>${fmt(p.apptDate, {weekday:"long"})}</span>` : ""}${p.apptTime ? `<span class="mono">${esc(p.apptTime)}</span>` : ""}</div></div>
+        ${acc(p)}${acts(p)}</div>`; }).join("")}</div>` : `<div class="empty">وقتی ثبت نشده.</div>`}</section>`;
+  }
+  // 2) waitlist, by country
+  if (wlTab === "" || wlTab === "waitlist"){
+    const wl = live.filter(p => p.status === "waitlist" && inC(p));
+    h += `<section class="sec"><div class="sec-h"><h2>⏳ در ویت‌لیست <small>${faN(wl.length)}</small></h2></div>${wl.length ? cs.filter(c => wl.some(p => p.portal === c.code)).map(c => { const g = wl.filter(p => p.portal === c.code).sort((x, y) => (x.addedAt || "").localeCompare(y.addedAt || ""));
+      return `<div class="wl-group"><div class="wl-gh">${flagEl(c.code, "sm")}<b>${esc(pName(c.code))}</b><span>${faN(g.length)} نفر</span></div><div class="wl-list2">${g.map(p => `<div class="wl-r">
+        <div class="wl-main"><div class="wl-name"><b>${esc(p.name)}</b></div><div class="wl-meta"><span>از ${esc(rel(p.addedAt))}</span></div></div>
+        ${acc(p)}${acts(p)}</div>`).join("")}</div></div>`; }).join("") : `<div class="empty">کسی در ویت‌لیست نیست.</div>`}</section>`;
   }
   return h;
 }
@@ -2491,6 +2525,8 @@ document.addEventListener("click", e => {
   if (a === "flow"){ if (id === "up") return uploadPassports(""); document.querySelector(`.tab[data-tab="${id}"]`)?.click(); window.scrollTo(0, 0); return; }
   if (a === "pcountry"){ peopleCountry = id; render(); return; }
   if (a === "wlshow"){ wlShow = id; render(); return; }
+  if (a === "wltab"){ wlTab = id; render(); return; }
+  if (a === "wlc"){ wlCountry = id; render(); return; }
   if (a === "book"){ if (canWrite) bookSheet([id]); return; }
   if (a === "bookall"){ if (canWrite) bookSheet(S.people.filter(p => p.accountId === id && p.status === "waitlist").map(p => p.id)); return; }
   if (a === "pstatus2"){ peopleStatus = id; render(); return; }
