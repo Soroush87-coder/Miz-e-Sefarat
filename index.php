@@ -392,26 +392,34 @@ function migrate_it_2026_10() {
   foreach ($all['people'] ?? [] as $id => $p) if (($p['portal'] ?? '') === $pc) deldoc('people', $id);
   if (!isset($all['portals'][$pc])) putdoc('portals', $pc, ['code' => $pc, 'order' => count($all['portals'] ?? [])]);
   // 2) add the list
-  $n = 0;
+  $n = 0; $newE = 0; $newS = 0; $booked = 0;
   foreach ($rows as [$ph, $name, $mail, $appt]) {
     $mail = strtolower(trim($mail)); $em = null;
     foreach ($all['emails'] ?? [] as $id => $e) if (strtolower($e['address'] ?? '') === $mail) { $em = $id; break; }
-    if (!$em) { $em = $next('EM', 'emails'); $all['emails'][$em] = ['code' => $em, 'address' => $mail, 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('emails', $em, $all['emails'][$em]); }
+    if (!$em) { $em = $next('EM', 'emails'); $all['emails'][$em] = ['code' => $em, 'address' => $mail, 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('emails', $em, $all['emails'][$em]); $newE++; }
     $sim = '';
     if ($ph !== '') {
       $num = '+971' . $ph;
       foreach ($all['sims'] ?? [] as $id => $m) if (($m['number'] ?? '') === $num) { $sim = $id; break; }
       if (!$sim) { $op = in_array(substr($ph, 0, 2), ['50', '54', '56'], true) ? 'Etisalat' : (in_array(substr($ph, 0, 2), ['52', '55', '58'], true) ? 'du' : '');
-        $sim = $next('SIM', 'sims'); $all['sims'][$sim] = ['code' => $sim, 'number' => $num, 'operator' => $op, 'expiry' => '', 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('sims', $sim, $all['sims'][$sim]); }
+        $sim = $next('SIM', 'sims'); $all['sims'][$sim] = ['code' => $sim, 'number' => $num, 'operator' => $op, 'expiry' => '', 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('sims', $sim, $all['sims'][$sim]); $newS++; }
       putdoc('regs', "{$pc}__{$sim}", ['id' => "{$pc}__{$sim}", 'portal' => $pc, 'simId' => $sim, 'status' => 'registered', 'emailId' => $em, 'seen' => $today]);
     }
     $acc = "{$pc}__{$em}";
     putdoc('accounts', $acc, ['id' => $acc, 'portal' => $pc, 'emailId' => $em, 'simId' => $sim, 'status' => 'active', 'lastVerified' => $today, 'createdAt' => $today, 'note' => '', 'updated' => $today]);
     putdoc('people', bin2hex(random_bytes(10)), ['name' => $name, 'portal' => $pc, 'emailId' => $em, 'accountId' => $acc, 'status' => $appt ? 'booked' : 'waitlist', 'apptDate' => $appt, 'apptTime' => '', 'note' => '', 'passportId' => '', 'addedAt' => $today]);
-    $n++;
+    $n++; if ($appt) $booked++;
   }
   putdoc('logs', 'mig-it-2026-10', ['type' => 'edit', 'portal' => $pc, 'date' => $today, 'at' => date('c'), 'emailId' => '', 'simId' => '', 'note' => "لیست ایتالیا وارد شد: $n اکانت و مسافر"]);
   pdo()->commit();
+  // celebrate in Telegram
+  $t = "🎉 <b>لیست ایتالیا به‌روز شد!</b> 🇮🇹\n\n"
+     . "✅ " . tg_fa($n) . " اکانت فعال با مسافر\n"
+     . "📱 " . tg_fa($newS) . " شماره جدید اضافه شد\n"
+     . "📧 " . tg_fa($newE) . " ایمیل جدید اضافه شد\n"
+     . "📅 " . tg_fa($booked) . " نفر وقت گرفته · " . tg_fa($n - $booked) . " نفر در Waitlist\n\n"
+     . "برای دیدن جزئیات: /menu ← 🇮🇹 ایتالیا";
+  foreach (tg_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
 }
 
 // ---------- API ----------
