@@ -10,10 +10,6 @@
 
 // ===================== SETTINGS — only edit this block =====================
 $CONFIG = [
-  // Claude API key used to read the Emirates ID photo (console.anthropic.com → API Keys)
-  'anthropic_api_key' => '',
-  'model'             => 'claude-opus-5-5',
-
   // SMTP account that sends the PDF copy to the company
   'smtp_host'      => '',            // e.g. smtp.hostinger.com
   'smtp_port'      => 465,           // 465 (ssl) or 587 (tls)
@@ -205,7 +201,6 @@ function setup_problems($P, $CONFIG, $LIBS) {
   if (!ensure_dirs($P)) $p[] = 'پوشه خصوصی ساخته نشد یا قابل نوشتن نیست: ' . $P;
   elseif (inside_docroot($P)) $p[] = 'پوشه خصوصی داخل مسیر عمومی سایت است. در تنظیمات private_dir مسیری بیرون از public_html بدهید.';
   elseif (!install_libs($P, $LIBS)) $p[] = 'کتابخانه‌های PDF و ایمیل دانلود نشدند (اتصال هاست به GitHub). صفحه را دوباره باز کنید یا راهنما را ببینید.';
-  if (!preg_match('/^sk-ant-/', $CONFIG['anthropic_api_key'])) $p[] = 'کلید anthropic_api_key تنظیم نشده است.';
   foreach (['smtp_host', 'smtp_user', 'smtp_pass'] as $k) if ($CONFIG[$k] === '') $p[] = "تنظیم $k خالی است.";
   if (!filter_var($CONFIG['mail_from'], FILTER_VALIDATE_EMAIL)) $p[] = 'تنظیم mail_from یک ایمیل معتبر نیست.';
   $rcpt = company_recipients($CONFIG);
@@ -286,25 +281,6 @@ function rate_ok($key, $max, $window) {
   return $ok;
 }
 
-function luhn_ok($digits) {
-  $sum = 0; $alt = false;
-  for ($i = strlen($digits) - 1; $i >= 0; $i--) {
-    $n = (int)$digits[$i];
-    if ($alt) { $n *= 2; if ($n > 9) $n -= 9; }
-    $sum += $n; $alt = !$alt;
-  }
-  return $sum % 10 === 0;
-}
-function norm_eid($s) {
-  $d = preg_replace('/\D/', '', (string)$s);
-  if (strlen($d) !== 15 || substr($d, 0, 3) !== '784' || !luhn_ok($d)) return '';
-  return substr($d, 0, 3) . '-' . substr($d, 3, 4) . '-' . substr($d, 7, 7) . '-' . substr($d, 14, 1);
-}
-function norm_date($s) {
-  if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim((string)$s), $m)) return '';
-  if (!checkdate((int)$m[2], (int)$m[3], (int)$m[1]) || $m[1] < 2000 || $m[1] > 2100) return '';
-  return $m[0];
-}
 function norm_name($s) {
   $s = trim(preg_replace('/\s+/u', ' ', (string)$s));
   if (mb_strlen($s) < 3 || mb_strlen($s) > 100) return '';
@@ -314,79 +290,11 @@ function norm_name($s) {
 
 function public_state() {
   $s = $_SESSION;
-  $scan = $s['scan'] ?? null;
   return [
-    'scan'    => $scan ? ['ok' => !empty($scan['ok']), 'needs_back' => !empty($scan['needs_back']), 'fields' => $scan['fields']] : null,
     'details' => $s['details'] ?? null,
     'terms'   => $s['terms'] ?? [],
     'sub'     => isset($s['sub']) ? ['id' => $s['sub']['id'], 'email' => $s['sub']['email'], 'file_ok' => is_file($s['sub']['file'])] : null,
   ];
-}
-
-// ------------------------------------------------------------- OCR (Claude)
-function claude_read_card($imgBytes, $mime, $side) {
-  global $CONFIG;
-  $schema = [
-    'type' => 'object', 'additionalProperties' => false,
-    'required' => ['is_emirates_id', 'side', 'readable', 'full_name', 'id_number', 'expiry_date'],
-    'properties' => [
-      'is_emirates_id' => ['type' => 'boolean'],
-      'side'           => ['type' => 'string', 'enum' => ['front', 'back', 'unknown']],
-      'readable'       => ['type' => 'boolean'],
-      'full_name'      => ['type' => 'string'],
-      'id_number'      => ['type' => 'string'],
-      'expiry_date'    => ['type' => 'string'],
-    ],
-  ];
-  $system = "You read UAE Emirates ID cards to pre-fill a form. Work only from what is visibly printed in the image or PDF.\n"
-    . "- If a PDF shows both sides of the card, read the fields from both sides.\n"
-    . "- is_emirates_id: true only if the image or PDF shows a UAE Emirates ID card (front or back).\n"
-    . "- side: which side is shown. The back usually has a machine-readable zone (MRZ).\n"
-    . "- readable: false if the card is blurred, cut off, covered by glare, or too small to read.\n"
-    . "- full_name: the holder's name in English exactly as printed (or from the MRZ on the back, with '<' replaced by spaces).\n"
-    . "- id_number: the 15-digit ID number as 784-YYYY-NNNNNNN-N.\n"
-    . "- expiry_date: the card expiry date as YYYY-MM-DD.\n"
-    . "Never guess or complete partially visible characters: if any part of a field is not clearly legible or not present on this side, return an empty string for that field.";
-  $body = [
-    'model' => $CONFIG['model'],
-    'max_tokens' => 4000,
-    'fallbacks' => 'default',
-    'output_config' => ['effort' => 'low', 'format' => ['type' => 'json_schema', 'schema' => $schema]],
-    'system' => $system,
-    'messages' => [[
-      'role' => 'user',
-      'content' => [
-        [
-          'type' => $mime === 'application/pdf' ? 'document' : 'image',
-          'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($imgBytes)],
-        ],
-        ['type' => 'text', 'text' => "The customer says this is the $side of their Emirates ID. Extract the fields."],
-      ],
-    ]],
-  ];
-  $ch = curl_init('https://api.anthropic.com/v1/messages');
-  curl_setopt_array($ch, [
-    CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 90, CURLOPT_CONNECTTIMEOUT => 15,
-    CURLOPT_HTTPHEADER => [
-      'content-type: application/json',
-      'x-api-key: ' . $CONFIG['anthropic_api_key'],
-      'anthropic-version: 2023-06-01',
-      'anthropic-beta: server-side-fallback-2026-07-01',
-    ],
-    CURLOPT_POSTFIELDS => json_encode($body),
-  ]);
-  $res = curl_exec($ch);
-  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-  $body = null;
-  if ($code !== 200 || !is_string($res)) { error_log("tm_visa: OCR HTTP $code"); return null; }
-  $j = json_decode($res, true);
-  if (($j['stop_reason'] ?? '') !== 'end_turn') { error_log('tm_visa: OCR stop ' . ($j['stop_reason'] ?? '?')); return null; }
-  foreach ($j['content'] ?? [] as $b) if (($b['type'] ?? '') === 'text') {
-    $r = json_decode($b['text'], true);
-    if (is_array($r) && isset($r['is_emirates_id'])) return $r;
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------- PDF
@@ -430,20 +338,16 @@ function build_pdf($snap, $sigBytes, $dest) {
   $pdf->SetFont('dejavusans', '', 9.5);
 
   $rows = [
-    ['Full name', 'الاسم الكامل', $c['name'], 'name'],
-    ['Emirates ID number', 'رقم الهوية الإماراتية', $c['eid'], 'eid'],
-    ['Emirates ID expiry', 'تاريخ انتهاء الهوية', $c['expiry'], 'expiry'],
+    ['Full name', 'الاسم الكامل', $c['name'], null],
     ['Mobile', 'رقم الهاتف المتحرك', $c['phone'], null],
     ['Email', 'البريد الإلكتروني', $c['email'], null],
   ];
   $t = '<h3 style="font-size:11pt">Customer details</h3><table border="0.3" cellpadding="4">';
   foreach ($rows as $r) {
     $note = '';
-    if ($r[3] && $snap['scanned'][$r[3]] !== $r[2])
-      $note = '<br><span style="font-size:7.5pt;color:#666">Read from card: ' . h($snap['scanned'][$r[3]] !== '' ? $snap['scanned'][$r[3]] : '(not read)') . ' — corrected by customer</span>';
     $t .= '<tr><td width="34%" style="background-color:#eef4f8">' . h($r[0]) . '<br><span style="font-size:8.5pt">' . h($r[1]) . '</span></td><td width="66%"><b>' . h($r[2]) . '</b>' . $note . '</td></tr>';
   }
-  $t .= '</table><p style="font-size:7.5pt;color:#555">Name, ID number and expiry were read from a photo of the customer\'s Emirates ID and reviewed by the customer. This is not an official or government identity verification. Mobile and email were entered by the customer and were not verified. The card image is not stored or included in this document.</p>';
+  $t .= '</table><p style="font-size:7.5pt;color:#555">Name, mobile and email were entered by the customer and were not verified.</p>';
   $pdf->writeHTML($t, true, false, true, false, '');
 
   $en = '<h3 style="font-size:11pt">Terms accepted</h3>';
@@ -504,7 +408,7 @@ function send_company_email(&$sub) {
     $c = $sub['snap']['customer'];
     $m->Subject = 'Signed visa service terms ' . $sub['id'] . ' — ' . $c['name'];
     $m->Body = "A customer signed the visa service terms.\n\nTracking No.: {$sub['id']}\nSubmitted: {$sub['snap']['time_label']}\n"
-      . "Name: {$c['name']}\nEmirates ID: {$c['eid']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\n\n"
+      . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\n\n"
       . "The signed agreement is attached. Keep this email: the file is deleted from the website automatically after a short time.";
     $m->addAttachment($sub['file'], 'TravelMarket-Agreement-' . $sub['id'] . '.pdf', 'base64', 'application/pdf');
     $m->send();
@@ -542,52 +446,10 @@ if ($a !== '') {
 
   if ($a === 'state') out(['ok' => true, 'state' => public_state()]);
 
-  if ($a === 'scan') {
-    if ($locked) fail('locked');
-    $side = ($in['side'] ?? '') === 'back' ? 'back' : 'front';
-    $f = $_FILES['image'] ?? null;
-    if (!$f || $f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) fail('upload');
-    $tmp = $f['tmp_name'];
-    $size = filesize($tmp);
-    $info = @getimagesize($tmp);
-    $fmime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
-    $types = [IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_PNG => 'image/png', IMAGETYPE_WEBP => 'image/webp'];
-    $isPdf = $fmime === 'application/pdf' && file_get_contents($tmp, false, null, 0, 5) === '%PDF-';
-    if ($size < 3000 || $size > 8 * 1024 * 1024) { @unlink($tmp); fail('bad_image'); }
-    if (!$isPdf) {
-      if (!$info || !isset($types[$info[2]]) || $types[$info[2]] !== $fmime) { @unlink($tmp); fail('bad_image'); }
-      if (min($info[0], $info[1]) < 400 || max($info[0], $info[1]) > 8000) { @unlink($tmp); fail('small_image'); }
-    }
-    if (!rate_ok('ocr-s-' . session_id(), 12, 3600) || !rate_ok('ocr-ip-' . client_ip(), 30, 3600)) { @unlink($tmp); fail('rate', 429); }
-    $bytes = file_get_contents($tmp);
-    @unlink($tmp); // raw card image is never kept on the server
-    $r = claude_read_card($bytes, $fmime, $side);
-    $bytes = null;
-    if ($r === null) fail('service', 502);
-    if (!$r['is_emirates_id']) fail('not_id');
-    if (!$r['readable']) fail('unreadable');
-    $got = ['name' => norm_name($r['full_name']), 'eid' => norm_eid($r['id_number']), 'expiry' => norm_date($r['expiry_date'])];
-    $scan = $_SESSION['scan'] ?? ['fields' => ['name' => '', 'eid' => '', 'expiry' => '']];
-    if ($side === 'front') $scan = ['fields' => ['name' => '', 'eid' => '', 'expiry' => '']];
-    $fields = $scan['fields'];
-    if ($side === 'back' && $fields['eid'] !== '' && $got['eid'] !== '' && $got['eid'] !== $fields['eid']) fail('mismatch');
-    if ($side === 'front' && $got['name'] === '' && $got['eid'] === '') fail('unreadable');
-    foreach ($got as $k => $v) if ($fields[$k] === '' && $v !== '') $fields[$k] = $v;
-    $ok = $fields['name'] !== '' && $fields['eid'] !== '' && $fields['expiry'] !== '';
-    $_SESSION['scan'] = ['fields' => $fields, 'ok' => $ok, 'needs_back' => !$ok, 'at' => time()];
-    // a new scan replaces card details; contact details are kept
-    $keep = $_SESSION['details'] ?? [];
-    $_SESSION['details'] = ['phone' => $keep['phone'] ?? '', 'email' => $keep['email'] ?? ''];
-    out(['ok' => true, 'state' => public_state()]);
-  }
-
   if ($a === 'details') {
     if ($locked) fail('locked');
-    if (empty($_SESSION['scan']['ok'])) fail('need_scan', 409);
     $d = [
       'name'   => norm_name($in['name'] ?? ''),
-      'eid'    => norm_eid($in['eid'] ?? ''),
-      'expiry' => norm_date($in['expiry'] ?? ''),
       'phone'  => preg_match('/^\+?[0-9][0-9 \-()]{6,19}$/', trim($in['phone'] ?? '')) ? trim($in['phone']) : '',
       'email'  => filter_var(trim($in['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '',
     ];
@@ -611,7 +473,6 @@ if ($a !== '') {
 
   if ($a === 'submit') {
     if ($locked) out(['ok' => true, 'state' => public_state()]); // repeated click / refresh: no new agreement
-    if (empty($_SESSION['scan']['ok'])) fail('need_scan', 409);
     if (empty($_SESSION['details']['confirmed'])) fail('need_details', 409);
     foreach ($TERMS as $k => $_) if (empty($_SESSION['terms'][$k])) fail('need_terms', 409);
     if (($in['final'] ?? '') !== '1') fail('need_final', 422);
@@ -635,8 +496,7 @@ if ($a !== '') {
     $snap = [
       'id' => $id,
       'time_label' => $now->format('d M Y, H:i:s') . ' (Dubai time, GST)',
-      'customer' => ['name' => $det['name'], 'eid' => $det['eid'], 'expiry' => $det['expiry'], 'phone' => $det['phone'], 'email' => $det['email']],
-      'scanned' => $_SESSION['scan']['fields'],
+      'customer' => ['name' => $det['name'], 'phone' => $det['phone'], 'email' => $det['email']],
       'terms_at' => $termsAt,
       'terms_version' => TERMS_VERSION,
       'terms_hash' => hash('sha256', json_encode([$TERMS, $TERMS_NOTE, $DECLARATION], JSON_UNESCAPED_UNICODE)),
@@ -751,25 +611,14 @@ canvas{display:block;width:100%;height:200px;border:2px dashed #cbbcfb;border-ra
 <script nonce="<?= $NONCE ?>">
 const BOOT = <?= json_encode($BOOT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const T = {
-en:{lang:'العربية',step:'Step {n} of 6',start:'Start',next:'Next',back:'Back',
+en:{lang:'العربية',step:'Step {n} of 5',start:'Start',next:'Next',back:'Back',
  w_title:'Visa service terms',w_intro:'Please review and sign our general visa service terms. It takes about 3 minutes.',
- w_priv:'Before you start: you will take a photo of your Emirates ID (or upload a PDF of it). The file is sent securely to our text-reading service (Anthropic Claude) only to read your name, ID number and expiry date for this agreement. We do not keep the photo or file — it is deleted from our server right after it is read and is not placed in the agreement. Your confirmed details and signed agreement stay on our server for up to {keep} minutes so you can download them, then they are deleted automatically. A copy is sent to Travel Market by email.',
- w_note:'Reading the card only fills in your details. It is not an official or government identity check.',
- s_title:'Scan your Emirates ID',s_front:'Take a clear photo of the FRONT of your card. Place it on a flat surface, fill the frame, and avoid glare.',
- s_back:'We could not read everything from the front. Please take a photo of the BACK of your card.',
- s_cam:'Take photo',s_lib:'Choose photo or PDF',s_wait:'Reading your card…',s_redo:'Scan the front again',
- s_done:'Card read successfully. Please check your details below.',
- e_not_id:'This does not look like an Emirates ID. Please take a new photo of your card.',
- e_unreadable:'The card could not be read clearly. Please take a new, sharper photo without glare.',
- e_bad_image:'Please use a photo or a PDF of your card (max 8 MB).',e_small_image:'The photo is too small. Please take a closer photo.',
- e_mismatch:'The back does not match the front of the card. Please photograph the back of the same card.',
- e_service:'Our card-reading service is not responding right now. Please try again.',
- e_rate:'Too many attempts. Please wait a while and try again.',e_upload:'The photo could not be uploaded. Please try again.',
+ 
+ e_rate:'Too many attempts. Please wait a while and try again.',
  e_net:'Connection problem. Please check your internet and try again.',e_generic:'Something went wrong. Please try again.',
  e_pdf:'The agreement could not be created. Please try again.',e_setup:'This page is temporarily unavailable.',
- d_title:'Confirm your details',d_intro:'Check the details read from your card and correct any mistakes. Then add your mobile number and email.',
- d_name:'Full name (as on card)',d_eid:'Emirates ID number',d_exp:'Card expiry date',d_phone:'Mobile number',d_email:'Email',
- d_from:'Read from card: {v}',d_btn:'I have reviewed and confirmed my details',d_bad:'Please check the highlighted fields.',
+ d_title:'Your details',d_intro:'Please enter your full name, mobile number and email.',
+ d_name:'Full name',d_phone:'Mobile number',d_email:'Email',d_btn:'Continue',d_bad:'Please check the highlighted fields.',
  t_title:'Service terms',t_part:'Term {n} of 4',t_accept:'I have read and accept this term.',
  r_title:'Review and sign',r_details:'Your details',r_edit:'Edit details',r_agree:'Full agreement',
  r_sign:'Sign below with your finger',r_clear:'Clear signature',r_final:'',r_btn:'Confirm and create agreement',r_need_sig:'Please sign in the box.',
@@ -780,25 +629,14 @@ en:{lang:'العربية',step:'Step {n} of 6',start:'Start',next:'Next',back:'B
  f_mail_wait:'Sending a copy to Travel Market…',f_keep:'Please download and keep your copy. It will be deleted from this website within {keep} minutes.',
  f_gone:'The file has been deleted from this website. Please contact Travel Market with your tracking number.',
  contact_note:'Your mobile and email are recorded as you typed them; they are not verified.'},
-ar:{lang:'English',step:'الخطوة {n} من 6',start:'ابدأ',next:'التالي',back:'السابق',
+ar:{lang:'English',step:'الخطوة {n} من 5',start:'ابدأ',next:'التالي',back:'السابق',
  w_title:'شروط خدمات التأشيرة',w_intro:'يرجى مراجعة الشروط العامة لخدمات التأشيرة والتوقيع عليها. يستغرق ذلك نحو 3 دقائق.',
- w_priv:'قبل البدء: ستلتقط صورة لبطاقة الهوية الإماراتية (أو ترفع ملف PDF لها). يُرسل الملف بشكل آمن إلى خدمة قراءة النصوص لدينا (Anthropic Claude) فقط لقراءة الاسم ورقم الهوية وتاريخ الانتهاء لهذه الاتفاقية. لا نحتفظ بالصورة أو الملف، إذ يُحذف من خادمنا فور قراءته ولا يُدرج في الاتفاقية. تبقى بياناتك المؤكدة والاتفاقية الموقعة على خادمنا لمدة أقصاها {keep} دقيقة لتتمكن من تنزيلها، ثم تُحذف تلقائياً. وتُرسل نسخة إلى Travel Market عبر البريد الإلكتروني.',
- w_note:'قراءة البطاقة تُستخدم فقط لتعبئة بياناتك، وليست تحققاً رسمياً أو حكومياً من الهوية.',
- s_title:'مسح الهوية الإماراتية',s_front:'التقط صورة واضحة لـ الوجه الأمامي من البطاقة. ضعها على سطح مستوٍ، واجعلها تملأ الإطار، وتجنّب الانعكاس.',
- s_back:'لم نتمكن من قراءة جميع البيانات من الوجه الأمامي. يرجى تصوير الوجه الخلفي من البطاقة.',
- s_cam:'التقاط صورة',s_lib:'اختيار صورة أو ملف PDF',s_wait:'جارٍ قراءة البطاقة…',s_redo:'مسح الوجه الأمامي من جديد',
- s_done:'تمت قراءة البطاقة بنجاح. يرجى مراجعة بياناتك أدناه.',
- e_not_id:'لا تبدو هذه الصورة لبطاقة هوية إماراتية. يرجى التقاط صورة جديدة للبطاقة.',
- e_unreadable:'تعذرت قراءة البطاقة بوضوح. يرجى التقاط صورة أوضح بدون انعكاس.',
- e_bad_image:'يرجى استخدام صورة أو ملف PDF للبطاقة (بحد أقصى 8 ميغابايت).',e_small_image:'الصورة صغيرة جداً. يرجى التقاط صورة أقرب.',
- e_mismatch:'الوجه الخلفي لا يطابق الوجه الأمامي. يرجى تصوير الوجه الخلفي للبطاقة نفسها.',
- e_service:'خدمة قراءة البطاقة لا تستجيب حالياً. يرجى المحاولة مرة أخرى.',
- e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',e_upload:'تعذر رفع الصورة. يرجى المحاولة مرة أخرى.',
+ 
+ e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',
  e_net:'مشكلة في الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً.',e_generic:'حدث خطأ. يرجى المحاولة مرة أخرى.',
  e_pdf:'تعذر إنشاء الاتفاقية. يرجى المحاولة مرة أخرى.',e_setup:'هذه الصفحة غير متاحة مؤقتاً.',
- d_title:'تأكيد البيانات',d_intro:'راجع البيانات المقروءة من البطاقة وصحّح أي خطأ، ثم أضف رقم هاتفك المتحرك وبريدك الإلكتروني.',
- d_name:'الاسم الكامل (كما في البطاقة)',d_eid:'رقم الهوية الإماراتية',d_exp:'تاريخ انتهاء البطاقة',d_phone:'رقم الهاتف المتحرك',d_email:'البريد الإلكتروني',
- d_from:'المقروء من البطاقة: {v}',d_btn:'راجعت بياناتي وأكدتها',d_bad:'يرجى التحقق من الحقول المحددة.',
+ d_title:'بياناتك',d_intro:'يرجى إدخال اسمك الكامل ورقم هاتفك المتحرك وبريدك الإلكتروني.',
+ d_name:'الاسم الكامل',d_phone:'رقم الهاتف المتحرك',d_email:'البريد الإلكتروني',d_btn:'متابعة',d_bad:'يرجى التحقق من الحقول المحددة.',
  t_title:'شروط الخدمة',t_part:'البند {n} من 4',t_accept:'قرأت هذا البند وأوافق عليه.',
  r_title:'المراجعة والتوقيع',r_details:'بياناتك',r_edit:'تعديل البيانات',r_agree:'الاتفاقية كاملة',
  r_sign:'وقّع في المربع أدناه بإصبعك',r_clear:'مسح التوقيع',r_final:'',r_btn:'تأكيد وإنشاء الاتفاقية',r_need_sig:'يرجى التوقيع داخل المربع.',
@@ -813,7 +651,7 @@ ar:{lang:'English',step:'الخطوة {n} من 6',start:'ابدأ',next:'الت�
 let lang = 'en';
 try { if (localStorage.getItem('tm_lang') === 'ar') lang = 'ar'; } catch (e) {}
 let S = BOOT.state, step = 1, tstep = 0, busy = false, msg = null;
-const form = {name:'',eid:'',expiry:'',phone:'',email:''};
+const form = {name:'',phone:'',email:''};
 let sigData = null, sigInk = 0, finalChk = false, badFields = [];
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -821,18 +659,13 @@ const t = (k, v = {}) => (T[lang][k] || T.en[k] || k).replace(/\{(\w+)\}/g, (_, 
 const KEYS = ['a','b','c','d'];
 
 function syncForm() {
-  const d = S.details, f = S.scan && S.scan.fields;
-  if (d && d.confirmed) Object.assign(form, {name:d.name, eid:d.eid, expiry:d.expiry, phone:d.phone, email:d.email});
-  else {
-    if (f && !form.name && !form.eid && !form.expiry) Object.assign(form, {name:f.name, eid:f.eid, expiry:f.expiry});
-    if (d) { form.phone = form.phone || d.phone || ''; form.email = form.email || d.email || ''; }
-  }
+  const d = S.details;
+  if (d) for (const k in form) form[k] = form[k] || d[k] || '';
 }
 function maxStep() {
-  if (S.sub) return 6;
-  if (!S.scan || !S.scan.ok) return 2;
-  if (!S.details || !S.details.confirmed) return 3;
-  return KEYS.every(k => S.terms[k]) ? 5 : 4;
+  if (S.sub) return 5;
+  if (!S.details || !S.details.confirmed) return 2;
+  return KEYS.every(k => S.terms[k]) ? 4 : 3;
 }
 async function api(a, data, isForm) {
   const body = isForm ? data : new URLSearchParams(data || {});
@@ -848,46 +681,30 @@ function render() {
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   $('#langBtn').textContent = t('lang');
   $('#legal').textContent = lang === 'ar' ? BOOT.company.arabic : BOOT.company.legal;
-  $('#barFill').style.width = (step / 6 * 100) + '%';
+  $('#barFill').style.width = (step / 5 * 100) + '%';
   $('#stepNo').textContent = t('step', {n: step});
-  $('#ico').textContent = ['👋','🪪','📝','📋','✍️','🎉'][step - 1];
+  $('#ico').textContent = ['👋','📝','📋','✍️','🎉'][step - 1];
   const v = $('#view');
   const M = msg ? `<div class="msg ${msg.type}" role="alert">${esc(msg.text)}</div>` : '';
   const navBack = `<button class="btn alt" data-go="${step - 1}" type="button">${t('back')}</button>`;
   if (step === 1) {
     v.innerHTML = `<h1>${t('w_title')}</h1><p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>Dubai Licence No. ${esc(BOOT.company.licence)}</span></p>
-      <p class="ctr muted">${t('w_intro')}</p><p class="muted mt ctr">${t('w_note')}</p>
+      <p class="ctr muted">${t('w_intro')}</p>
       <button class="btn" data-go="2" type="button">${t('start')}</button>`;
   } else if (step === 2) {
-    const sc = S.scan, back = sc && sc.needs_back;
-    let body = sc && sc.ok ? `<div class="msg ok">${t('s_done')}</div>` : `<p>${back ? t('s_back') : t('s_front')}</p>`;
-    v.innerHTML = `<h2>${t('s_title')}</h2>${body}
-      ${busy ? `<div class="msg info">${t('s_wait')}</div>` : `
-      <label class="btn${sc && sc.ok ? ' alt' : ''}">${t('s_cam')}<input type="file" id="cam" accept="image/*" capture="environment" class="vh"></label>
-      <label class="btn alt">${t('s_lib')}<input type="file" id="lib" accept="image/*,application/pdf" class="vh"></label>
-      ${back ? `<label class="link">${t('s_redo')}<input type="file" id="redo" accept="image/*" capture="environment" class="vh"></label>` : ''}`}
-      ${M}<p class="muted mt">${t('w_note')}</p>
-      <div class="nav">${navBack}<button class="btn" data-go="3" type="button" ${sc && sc.ok && !busy ? '' : 'disabled'}>${t('next')}</button></div>`;
-    if (!busy) {
-      const on = (sel, side) => { const i = $(sel); if (i) i.onchange = () => { if (i.files[0]) scan(i.files[0], side); }; };
-      on('#cam', back ? 'back' : 'front'); on('#lib', back ? 'back' : 'front'); on('#redo', 'front');
-    }
-  } else if (step === 3) {
-    const f = S.scan.fields;
     const fld = (k, type, extra = '') => {
-      const from = (k in f) && form[k] !== f[k] ? `<div class="hint">${esc(t('d_from', {v: f[k] || '—'}))}</div>` : '';
       const bad = badFields.includes(k) ? ' class="bad"' : '';
-      return `<label class="f" for="f_${k}">${t('d_' + (k === 'expiry' ? 'exp' : k))}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(form[k])}" ${extra}${bad}>${from}`;
+      return `<label class="f" for="f_${k}">${t('d_' + k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(form[k])}" ${extra}${bad}>`;
     };
-    v.innerHTML = `<h2>${t('d_title')}</h2>${msg && msg.type === 'ok' ? M : ''}<p class="muted">${t('d_intro')}</p>
-      ${fld('name','text','autocomplete="name"')}${fld('eid','text','inputmode="numeric" dir="ltr"')}${fld('expiry','date','dir="ltr"')}
+    v.innerHTML = `<h2>${t('d_title')}</h2><p class="muted ctr">${t('d_intro')}</p>
+      ${fld('name','text','autocomplete="name"')}
       ${fld('phone','tel','autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}${fld('email','email','autocomplete="email" dir="ltr"')}
-      <p class="hint mt">${t('contact_note')}</p>${msg && msg.type === 'ok' ? '' : M}
+      <p class="hint mt">${t('contact_note')}</p>${M}
       <button class="btn" id="conf" type="button" ${busy ? 'disabled' : ''}>${t('d_btn')}</button>
       <div class="nav">${navBack}</div>`;
     v.querySelectorAll('input').forEach(i => i.oninput = () => { form[i.name] = i.value; });
     $('#conf').onclick = saveDetails;
-  } else if (step === 4) {
+  } else if (step === 3) {
     const k = KEYS[tstep], term = BOOT.terms[k];
     v.innerHTML = `<h2>${t('t_title')}</h2><div class="stepno">${t('t_part', {n: tstep + 1})}</div>
       <h3 class="th">${esc(term[lang + '_t'])}</h3><p>${esc(term[lang])}</p>
@@ -895,17 +712,17 @@ function render() {
       <label class="chk"><input type="checkbox" id="acc" ${S.terms[k] ? 'checked' : ''}><span>${t('t_accept')}</span></label>${M}
       <div class="nav"><button class="btn alt" id="tb" type="button">${t('back')}</button><button class="btn" id="tn" type="button" ${S.terms[k] && !busy ? '' : 'disabled'}>${t('next')}</button></div>`;
     $('#acc').onchange = async e => { busy = true; const r = await api('terms', {key: k, accepted: e.target.checked ? '1' : '0'}); busy = false; msg = r.ok ? null : {type:'err', text: errText(r.error)}; render(); };
-    $('#tb').onclick = () => { msg = null; if (tstep > 0) { tstep--; render(); } else go(3); };
-    $('#tn').onclick = () => { msg = null; if (tstep < 3) { tstep++; render(); } else go(5); };
-  } else if (step === 5) {
+    $('#tb').onclick = () => { msg = null; if (tstep > 0) { tstep--; render(); } else go(2); };
+    $('#tn').onclick = () => { msg = null; if (tstep < 3) { tstep++; render(); } else go(4); };
+  } else if (step === 4) {
     const d = S.details;
     const agree = `<h3>${esc(lang === 'ar' ? BOOT.company.arabic : BOOT.company.legal)}</h3><p class="muted">Dubai Licence No. ${esc(BOOT.company.licence)}</p>`
       + KEYS.map((k, i) => `<h3>${i + 1}. ${esc(BOOT.terms[k][lang + '_t'])}</h3><p>${esc(BOOT.terms[k][lang])}</p>`).join('')
       + `<p><i>${esc(BOOT.note[lang])}</i></p>`;
     v.innerHTML = `<h2>${t('r_title')}</h2><h3 class="sh">${t('r_details')}</h3>
-      <dl><dt>${t('d_name')}</dt><dd>${esc(d.name)}</dd><dt>${t('d_eid')}</dt><dd dir="ltr">${esc(d.eid)}</dd><dt>${t('d_exp')}</dt><dd dir="ltr">${esc(d.expiry)}</dd>
+      <dl><dt>${t('d_name')}</dt><dd>${esc(d.name)}</dd>
       <dt>${t('d_phone')}</dt><dd dir="ltr">${esc(d.phone)}</dd><dt>${t('d_email')}</dt><dd dir="ltr">${esc(d.email)}</dd></dl>
-      <button class="link" data-go="3" type="button">${t('r_edit')}</button>
+      <button class="link" data-go="2" type="button">${t('r_edit')}</button>
       <h3 class="sh">${t('r_agree')}</h3><div class="agree">${agree}</div>
       <label class="f">${t('r_sign')}</label><canvas id="sig"></canvas><button class="link" id="clr" type="button">${t('r_clear')}</button>
       <label class="chk"><input type="checkbox" id="fin" ${finalChk ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
@@ -915,9 +732,9 @@ function render() {
     setupSig();
     $('#fin').onchange = e => { finalChk = e.target.checked; $('#sub').disabled = !finalChk || busy; };
     $('#clr').onclick = () => { sigData = null; sigInk = 0; setupSig(); };
-    $('#rb').onclick = () => { tstep = 3; go(4); };
+    $('#rb').onclick = () => { tstep = 3; go(3); };
     $('#sub').onclick = submit;
-  } else if (step === 6) {
+  } else if (step === 5) {
     const s = S.sub, e = s.email;
     const mail = e === 'accepted' ? `<div class="msg ok">${t('f_mail_ok')}</div>`
       : e === 'pending' ? `<div class="msg info">${t('f_mail_wait')}</div>`
@@ -934,43 +751,16 @@ function go(n) {
   if (busy) return;
   msg = null; badFields = [];
   step = Math.max(1, Math.min(n, maxStep()));
-  if (step === 4 && tstep > 3) tstep = 0;
+  if (step === 3 && tstep > 3) tstep = 0;
   syncForm(); render(); window.scrollTo(0, 0);
 }
 
-async function toJpeg(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const sc = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return await new Promise(res => c.toBlob(res, 'image/jpeg', 0.9));
-  } finally { URL.revokeObjectURL(url); }
-}
-async function scan(file, side) {
-  busy = true; msg = null; render();
-  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
-  let blob = null;
-  if (isPdf) blob = file.size <= 8 * 1024 * 1024 ? file : null;
-  else { try { blob = await toJpeg(file); } catch (e) { blob = null; } }
-  if (!blob) { busy = false; msg = {type:'err', text: t('e_bad_image')}; render(); return; }
-  const fd = new FormData(); fd.append('side', side); fd.append('image', blob, isPdf ? 'card.pdf' : 'card.jpg');
-  const r = await api('scan', fd, true);
-  busy = false;
-  if (r.ok) {
-    form.name = form.eid = form.expiry = ''; syncForm();
-    if (S.scan.ok) { go(3); msg = {type:'ok', text: t('s_done')}; render(); return; }
-  } else msg = {type:'err', text: errText(r.error)};
-  render();
-}
 async function saveDetails() {
   document.querySelectorAll('#view input').forEach(i => form[i.name] = i.value.trim());
   busy = true; render();
   const r = await api('details', form);
   busy = false;
-  if (r.ok) { tstep = 0; go(4); return; }
+  if (r.ok) { tstep = 0; go(3); return; }
   badFields = r.fields || [];
   msg = {type:'err', text: r.error === 'invalid' ? t('d_bad') : errText(r.error)};
   render();
@@ -994,13 +784,13 @@ async function submit() {
   busy = true; msg = null; render();
   const r = await api('submit', {final: finalChk ? '1' : '0', signature: sigData});
   busy = false;
-  if (r.ok && S.sub) { go(6); return; }
+  if (r.ok && S.sub) { go(5); return; }
   msg = {type:'err', text: r.error === 'need_signature' ? t('r_need_sig') : errText(r.error)};
   render();
 }
 $('#langBtn').onclick = () => { lang = lang === 'en' ? 'ar' : 'en'; try { localStorage.setItem('tm_lang', lang); } catch (e) {} render(); };
 syncForm();
-step = S.sub ? 6 : 1;
+step = S.sub ? 5 : 1;
 render();
 </script>
 </body>
