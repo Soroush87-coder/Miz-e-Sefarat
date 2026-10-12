@@ -703,6 +703,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ccard-f span{background:rgba(255,255,255,.2);border-radius:var(--r-pill);padding:1px 10px;font-weight:700}
 .ccard.add{background:var(--glass);color:var(--accent);border:2px dashed var(--line-strong);box-shadow:none;align-items:center;justify-content:center;font-weight:800;min-height:190px}
 .ccard.add::after{display:none}
+.ticker{display:flex;align-items:center;gap:10px;height:38px;margin:-4px 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);padding-inline-start:14px;overflow:hidden;font-size:var(--fs-xs)}
+.tk-h{flex:none;font-weight:800;color:var(--muted)}
+.tk-v{flex:1;min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.tk-t{display:flex;align-items:center;width:max-content;animation:tk var(--tk) linear infinite}
+.ticker:hover .tk-t{animation-play-state:paused}
+@keyframes tk{to{transform:translateX(50%)}}
+@media (prefers-reduced-motion:reduce){.tk-t{animation:none}.tk-v{overflow-x:auto}}
+.tk-gap{width:28px;flex:none}
+.tk-i{display:inline-flex;align-items:center;gap:6px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer;padding:4px 12px;border-inline-end:1px solid var(--line);white-space:nowrap}
+.tk-i:hover b{color:var(--accent)}
+.tk-i b{font-weight:700}
+.tk-i span{color:var(--muted);font-variant-numeric:tabular-nums}
+.tk-i em{font-style:normal;font-weight:800;font-size:var(--fs-2xs);color:var(--green-ink);background:var(--green-soft,#e3f6ee);border-radius:var(--r-pill);padding:1px 7px}
+.tk-i.soon em{color:var(--amber-ink);background:var(--amber-soft)}
 .alert{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface);border-radius:var(--r-lg);padding:11px 16px;margin-bottom:10px;box-shadow:var(--shadow);border-inline-start:5px solid var(--lvl)}
 .alert .t{font-weight:700}.alert .d{color:var(--muted);font-size:var(--fs-sm)}
 .lvl-red{--lvl:var(--red)}.lvl-amber{--lvl:var(--amber)}.lvl-teal{--lvl:var(--teal)}
@@ -1598,6 +1612,16 @@ function renderCountries(){
   return h;
 }
 
+// slim ticker of upcoming appointments (soonest first), scrolling like a stock ticker; pauses on hover
+function apptTicker(pcOnly){
+  const ps = S.people.filter(p => p.status === "booked" && p.apptDate && (!pcOnly || p.portal === pcOnly) && -ago(p.apptDate) >= 0).sort((a, b) => a.apptDate.localeCompare(b.apptDate));
+  if (!ps.length) return "";
+  const day = iso => { try { return new Intl.DateTimeFormat("fa-IR-u-ca-gregory", {day:"numeric", month:"short"}).format(new Date(iso + "T12:00:00")); } catch { return iso; } };
+  const item = p => { const d = -ago(p.apptDate);
+    return `<button type="button" class="tk-i ${d <= 2 ? "soon" : ""}" data-act="person" data-id="${esc(p.id)}">${flagEl(p.portal, "sm")}<b>${esc(p.name)}</b><span>${esc(day(p.apptDate))}${p.apptTime ? " · " + esc(p.apptTime) : ""}</span><em>${d === 0 ? "امروز" : d === 1 ? "فردا" : faN(d) + " روز"}</em></button>`; };
+  const row = ps.map(item).join("");
+  return `<div class="ticker" style="--tk:${Math.max(20, ps.length * 7)}s"><span class="tk-h">📅 وقت‌ها</span><div class="tk-v"><div class="tk-t">${row}<span class="tk-gap"></span>${row}<span class="tk-gap"></span></div></div></div>`;
+}
 function globalAlerts(pcOnly){
   const out = [];
   for (const a of S.accounts.values()){
@@ -1606,10 +1630,6 @@ function globalAlerts(pcOnly){
     const d = ago(a.lastVerified);
     if (live && a.status === "active" && d !== null && d > FRESH)
       out.push({lvl: d > STALE ? "red" : "amber", t:`${pName(a.portal)} · ${S.emails.get(a.emailId)?.address || a.emailId}`, d:`${faN(live)} مسافر فعال دارد و ${faN(d)} روز است واردش نشده‌اید${d > STALE ? " — شاید پاک شده باشد" : ""}.`, id:a.id});
-  }
-  for (const p of S.people){
-    if (pcOnly && p.portal !== pcOnly) continue;
-    if (p.status === "booked" && p.apptDate){ const d = -ago(p.apptDate); if (d >= 0 && d <= 7) out.push({lvl:"teal", t:`وقت ${p.name} · ${pName(p.portal)}`, d:`${p.apptDate} (${rel(p.apptDate)})`, id:p.accountId}); }
   }
   return out.map(a => `<div class="alert lvl-${a.lvl}"><div><div class="t">${esc(a.t)}</div><div class="d">${esc(a.d)}</div></div><button class="btn sm" type="button" data-act="acc" data-id="${esc(a.id)}">باز کردن</button></div>`).join("");
 }
@@ -1623,7 +1643,7 @@ function renderCountry(pc){
   let h = `<div style="--cc:${flagColors(pc)[0] || colorOf(pc)}"><div class="hero"${flagBg(pc)}><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button></div></div>
     <div class="cstats"><span><b>${faN(s.people)}</b>مسافر</span><span><b>${faN(s.usedE)}</b>ایمیل استفاده‌شده</span><span><b>${faN(s.usedS)}</b>شماره استفاده‌شده</span><span><b>${faN(s.freeEmails)}</b>ایمیل با جای خالی</span><span><b>${faN(s.freePhones)}</b>شماره با جای خالی</span>${s.check ? `<span class="warn"><b>${faN(s.check)}</b>باید چک شود</span>` : ""}</div></div>`;
-  h += globalAlerts(pc);
+  h += apptTicker(pc) + globalAlerts(pc);
   h += `<section class="sec"><div class="sec-h"><h2>مسافرها و ایمیل و شماره‌شان</h2><small class="sec-hint">کنار هر ایمیل و شماره: چند بار از ${faN(CAP)} بار برای ${esc(pName(pc))} استفاده شده</small></div>${pairsList(pc) || `<div class="empty">هنوز مسافری برای ${esc(pName(pc))} نیست. پاسپورت آپلود کنید؛ سایت ایمیل و شماره پیشنهاد می‌دهد.</div>`}</section>`;
   h += `</div>`;
   return h;
@@ -1820,7 +1840,7 @@ function renderQueue(){
   const emHTML = ems.map(e => `<li><span class="mono">${esc(e.address)}</span>${flagsOf(usedPcs(p => p.emailId === e.code))}</li>`).join("");
   const smHTML = sims.map(m => `<li><span class="mono">${esc(prettyPhone(m.number))}</span>${flagsOf(usedPcs(p => pSimId(p) === m.code))}</li>`).join("");
   const freeE = ems.filter(e => !usedPcs(p => p.emailId === e.code).length).length, freeS = sims.filter(m => !usedPcs(p => pSimId(p) === m.code).length).length;
-  let h = `<section class="fhero">
+  let h = apptTicker() + `<section class="fhero">
     <div class="hero-sky"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></div>
     <div class="hero-plane">${PLANE_SVG}</div>
     <div class="hero-body">
