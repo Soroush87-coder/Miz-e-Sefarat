@@ -31,7 +31,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 date_default_timezone_set('Asia/Dubai');
 
-const TERMS_VERSION = '2026-10-v2';
+const TERMS_VERSION = '2026-10-v3';
 const LIB_TCPDF = '6.10.1';
 const LIB_MAILER = 'v7.0.2';
 
@@ -61,11 +61,11 @@ $TERMS = [
   ],
   'c' => [
     'en_t' => 'Service fees',
-    'en'   => 'The fees for our services were communicated to you before you completed this form. By accepting this term, you confirm that you were informed of these fees and that you agree to them. These fees are for the company\'s own services only. Embassy, consulate and visa-centre fees are separate and are paid by you directly.',
+    'en'   => 'The fees for our services were communicated to you before you completed this form. By accepting these terms, you confirm that you were informed of these fees and that you agree to them.',
     'ar_t' => 'رسوم الخدمات',
-    'ar'   => 'تم إبلاغكم برسوم خدماتنا قبل تعبئة هذا النموذج. وبموافقتكم على هذا البند، تؤكدون أنكم أُبلغتم بهذه الرسوم وأنكم توافقون عليها. هذه الرسوم مقابل خدمات الشركة نفسها فقط، أما رسوم السفارة أو القنصلية أو مركز التأشيرات فهي منفصلة ويدفعها العميل مباشرةً.',
+    'ar'   => 'تم إبلاغكم برسوم خدماتنا قبل تعبئة هذا النموذج. وبموافقتكم على هذه الشروط، تؤكدون أنكم أُبلغتم بهذه الرسوم وأنكم توافقون عليها.',
     'fa_t' => 'هزینه خدمات',
-    'fa'   => 'هزینه خدمات ما پیش از تکمیل این فرم به شما اعلام شده است. با پذیرش این بند، تأیید می‌کنید که از این هزینه‌ها مطلع شده‌اید و آن‌ها را می‌پذیرید. این هزینه‌ها فقط بابت خدمات خود شرکت است. هزینه سفارت، کنسولگری یا مرکز ویزا جداگانه است و مستقیماً توسط شما پرداخت می‌شود.',
+    'fa'   => 'هزینه خدمات ما پیش از تکمیل این فرم به شما اعلام شده است. با پذیرش این شرایط، تأیید می‌کنید که از این هزینه‌ها مطلع شده‌اید و آن‌ها را می‌پذیرید.',
   ],
   'd' => [
     'en_t' => 'Visa refusal and refunds',
@@ -346,7 +346,7 @@ function build_pdf($snap, $dest) {
 
   $x = '<h3 style="font-size:11pt">Terms accepted</h3>';
   $i = 0;
-  foreach ($TERMS as $k => $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['en_t']) . '</b><br>' . h($term['en']) . '<br><span style="font-size:7.5pt;color:#5b4bf0">✓ Accepted</span></p>'; }
+  foreach ($TERMS as $k => $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['en_t']) . '</b><br>' . h($term['en']) . '</p>'; }
   $en($x);
   $x = '<h3>الشروط المقبولة</h3>'; $i = 0;
   foreach ($TERMS as $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['ar_t']) . '</b><br>' . h($term['ar']) . '</p>'; }
@@ -360,7 +360,7 @@ function build_pdf($snap, $dest) {
   $rtl('<p>' . h($DECLARATION['ar']) . '</p>', 'aealarabiya', 12);
   $rtl('<p>' . h($DECLARATION['fa']) . '</p>', 'dejavusans', 9.5);
   $en('<table border="0.3" cellpadding="6"><tr><td style="background-color:#f8f7ff">Accepted electronically by the customer:<br><b>' . h($c['name']) . '</b><br>'
-    . 'Each term above was ticked separately and the declaration was confirmed before the form was submitted.<br>'
+    . 'The customer ticked the declaration above, accepting all of the terms, before submitting the form.<br>'
     . 'Submitted: ' . h($snap['time_label']) . '<br><span style="font-size:7.5pt;color:#555">IP address: ' . h($snap['ip'])
     . ' · Terms version ' . h($snap['terms_version']) . ' · SHA-256 of terms: ' . h(substr($snap['terms_hash'], 0, 32)) . '…</span></td></tr></table>');
   $pdf->Output($dest, 'F');
@@ -436,7 +436,6 @@ if ($a !== '') {
     ];
     if (mb_strlen($d['email']) > 120) $d['email'] = '';
     $bad = array_keys(array_filter($d, function ($v) { return $v === ''; }));
-    foreach ($TERMS as $k => $_) if (($in['t_' . $k] ?? '') !== '1') $bad[] = 'term_' . $k;
     if (($in['final'] ?? '') !== '1') $bad[] = 'final';
     if ($bad) fail('invalid', 422, ['fields' => $bad]);
     if (!rate_ok('sub-ip-' . client_ip(), 20, 3600)) fail('rate', 429);
@@ -567,11 +566,11 @@ label.btn,label.link{position:relative;text-align:center;display:block}.vh{posit
 <script nonce="<?= $NONCE ?>">
 const BOOT = <?= json_encode($BOOT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const T = {
-en:{title:'Visa service terms',intro:'Please read each term below and tick to accept it. At the end, enter your details and submit.',
+en:{title:'Visa service terms',intro:'Please read the terms below. At the end, enter your details, confirm and submit.',
  accept:'I have read and accept this term.',sec:'Your details',sec_intro:'Before finishing, please enter your full name, mobile number and email.',
  name:'Full name',phone:'Mobile number',email:'Email',contact_note:'Your details are recorded as you type them; they are not verified.',
  submit:'Accept and create agreement',wait:'Creating your agreement…',
- missing:'Please accept every term, confirm the declaration and fill in the highlighted fields.',
+ missing:'Please fill in the highlighted fields and tick the confirmation box.',
  e_rate:'Too many attempts. Please wait a while and try again.',e_net:'Connection problem. Please check your internet and try again.',
  e_generic:'Something went wrong. Please try again.',e_pdf:'The agreement could not be created. Please try again.',e_setup:'This page is temporarily unavailable.',
  f_title:'Your agreement is ready',f_track:'Tracking number',f_dl:'Download agreement (PDF)',
@@ -580,11 +579,11 @@ en:{title:'Visa service terms',intro:'Please read each term below and tick to ac
  f_mail_wait:'Sending a copy to Travel Market…',f_keep:'Please download and keep your copy. It will be deleted from this website within {keep} minutes.',
  f_gone:'The file has been deleted from this website. Please contact Travel Market with your tracking number.',
  licence:'Dubai Licence No.'},
-ar:{title:'شروط خدمات التأشيرة',intro:'يرجى قراءة كل بند أدناه ووضع علامة للموافقة عليه. في النهاية، أدخل بياناتك وأرسل النموذج.',
+ar:{title:'شروط خدمات التأشيرة',intro:'يرجى قراءة الشروط أدناه. في النهاية، أدخل بياناتك وأكّد موافقتك وأرسل النموذج.',
  accept:'قرأت هذا البند وأوافق عليه.',sec:'بياناتك',sec_intro:'قبل الإنهاء، يرجى إدخال اسمك الكامل ورقم هاتفك المتحرك وبريدك الإلكتروني.',
  name:'الاسم الكامل',phone:'رقم الهاتف المتحرك',email:'البريد الإلكتروني',contact_note:'تُسجَّل بياناتك كما أدخلتها، دون التحقق منها.',
  submit:'موافقة وإنشاء الاتفاقية',wait:'جارٍ إنشاء الاتفاقية…',
- missing:'يرجى الموافقة على جميع البنود وتأكيد الإقرار وتعبئة الحقول المحددة.',
+ missing:'يرجى تعبئة الحقول المحددة ووضع علامة في مربع التأكيد.',
  e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',e_net:'مشكلة في الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً.',
  e_generic:'حدث خطأ. يرجى المحاولة مرة أخرى.',e_pdf:'تعذر إنشاء الاتفاقية. يرجى المحاولة مرة أخرى.',e_setup:'هذه الصفحة غير متاحة مؤقتاً.',
  f_title:'اتفاقيتك جاهزة',f_track:'رقم المتابعة',f_dl:'تنزيل الاتفاقية (PDF)',
@@ -593,11 +592,11 @@ ar:{title:'شروط خدمات التأشيرة',intro:'يرجى قراءة كل
  f_mail_wait:'جارٍ إرسال نسخة إلى Travel Market…',f_keep:'يرجى تنزيل نسختك والاحتفاظ بها. ستُحذف من هذا الموقع خلال {keep} دقيقة.',
  f_gone:'تم حذف الملف من هذا الموقع. يرجى التواصل مع Travel Market مع ذكر رقم المتابعة.',
  licence:'رخصة دبي رقم'},
-fa:{title:'شرایط خدمات ویزا',intro:'لطفاً هر بند را بخوانید و برای پذیرش آن تیک بزنید. در پایان، مشخصات خود را وارد و فرم را ارسال کنید.',
+fa:{title:'شرایط خدمات ویزا',intro:'لطفاً شرایط زیر را بخوانید. در پایان، مشخصات خود را وارد کنید، تیک تأیید را بزنید و فرم را ارسال کنید.',
  accept:'این بند را خواندم و می‌پذیرم.',sec:'مشخصات شما',sec_intro:'پیش از پایان، لطفاً نام کامل، شماره موبایل و ایمیل خود را وارد کنید.',
  name:'نام کامل',phone:'شماره موبایل',email:'ایمیل',contact_note:'مشخصات شما همان‌طور که وارد می‌کنید ثبت می‌شود و تأیید نمی‌شود.',
  submit:'پذیرش و ساخت توافق‌نامه',wait:'در حال ساخت توافق‌نامه…',
- missing:'لطفاً همه بندها را بپذیرید، تأیید نهایی را بزنید و فیلدهای مشخص‌شده را پر کنید.',
+ missing:'لطفاً فیلدهای مشخص‌شده را پر کنید و تیک تأیید را بزنید.',
  e_rate:'تعداد تلاش‌ها زیاد است. لطفاً کمی صبر کنید و دوباره امتحان کنید.',e_net:'مشکل در اتصال. لطفاً اینترنت را بررسی و دوباره امتحان کنید.',
  e_generic:'خطایی رخ داد. لطفاً دوباره امتحان کنید.',e_pdf:'توافق‌نامه ساخته نشد. لطفاً دوباره امتحان کنید.',e_setup:'این صفحه موقتاً در دسترس نیست.',
  f_title:'توافق‌نامه شما آماده است',f_track:'شماره پیگیری',f_dl:'دانلود توافق‌نامه (PDF)',
@@ -611,7 +610,7 @@ const KEYS = ['a','b','c','d'];
 let lang = 'en';
 try { const l = localStorage.getItem('tm_lang'); if (T[l]) lang = l; } catch (e) {}
 let S = BOOT.state, busy = false, msg = null, bad = [];
-const F = {name:'', phone:'', email:'', final:false, t:{}};
+const F = {name:'', phone:'', email:'', final:false};
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const t = (k, v = {}) => (T[lang][k] || T.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? BOOT[x] ?? '');
@@ -644,9 +643,8 @@ function render() {
     if (rb) rb.onclick = async () => { busy = true; render(); const r = await api('email'); busy = false; msg = r.ok ? null : {type:'err', text: errText(r.error)}; render(); };
     return;
   }
-  const terms = KEYS.map((k, i) => `<section class="term${F.t[k] ? ' ok' : ''}${bad.includes('term_' + k) ? ' bad' : ''}">
-      <h3><span class="num">${i + 1}</span>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p>
-      <label class="chk"><input type="checkbox" data-k="${k}" ${F.t[k] ? 'checked' : ''}><span>${t('accept')}</span></label></section>`).join('');
+  const terms = KEYS.map((k, i) => `<section class="term">
+      <h3><span class="num">${i + 1}</span>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p></section>`).join('');
   const fld = (k, type, extra) => `<label class="f" for="f_${k}">${t(k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(F[k])}" ${extra}${bad.includes(k) ? ' class="bad"' : ''}>`;
   v.innerHTML = `<div class="intro"><h1>${t('title')}</h1>
       <p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>${t('licence')} ${esc(BOOT.company.licence)}</span></p>
@@ -661,7 +659,6 @@ function render() {
     ${busy ? `<div class="msg info">${t('wait')}</div>` : ''}${M}
     <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button>`;
   const clear = (key, el) => { bad = bad.filter(x => x !== key); el.classList.remove('bad'); if (!bad.length && msg && msg.type === 'err') { msg = null; const m = $('#view .msg.err'); if (m) m.remove(); } };
-  v.querySelectorAll('input[data-k]').forEach(c => c.onchange = () => { F.t[c.dataset.k] = c.checked; const box = c.closest('.term'); box.classList.toggle('ok', c.checked); if (c.checked) clear('term_' + c.dataset.k, box); });
   v.querySelectorAll('input[name]').forEach(i => i.oninput = () => { F[i.name] = i.value; if (i.value.trim()) clear(i.name, i); });
   $('#fin').onchange = e => { F.final = e.target.checked; if (F.final) clear('final', e.target.closest('.chk')); };
   $('#sub').onclick = submit;
@@ -670,13 +667,11 @@ function render() {
 async function submit() {
   document.querySelectorAll('#view input[name]').forEach(i => F[i.name] = i.value.trim());
   bad = [];
-  KEYS.forEach(k => { if (!F.t[k]) bad.push('term_' + k); });
   ['name', 'phone', 'email'].forEach(k => { if (!F[k]) bad.push(k); });
   if (!F.final) bad.push('final');
   if (bad.length) { msg = {type:'err', text: t('missing')}; render(); scrollToFirstBad(); return; }
   busy = true; msg = null; render();
   const data = {name: F.name, phone: F.phone, email: F.email, final: '1', lang};
-  KEYS.forEach(k => data['t_' + k] = '1');
   const r = await api('submit', data);
   busy = false;
   if (r.ok && S.sub) { msg = null; render(); window.scrollTo(0, 0); return; }
