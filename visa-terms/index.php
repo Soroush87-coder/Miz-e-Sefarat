@@ -31,7 +31,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 date_default_timezone_set('Asia/Dubai');
 
-const TERMS_VERSION = '2026-10-v1';
+const TERMS_VERSION = '2026-10-v2';
 const LIB_TCPDF = '6.10.1';
 const LIB_MAILER = 'v7.0.2';
 
@@ -48,34 +48,40 @@ $TERMS = [
     'en'   => 'The decision to issue or refuse a visa rests with the issuing authority. The company does not guarantee that a visa will be issued, or when the authority will make its decision.',
     'ar_t' => 'قرار التأشيرة',
     'ar'   => 'قرار إصدار التأشيرة أو رفضها يعود إلى الجهة المُصدِرة. لا تضمن الشركة إصدار التأشيرة ولا موعد اتخاذ الجهة لقرارها.',
+    'fa_t' => 'تصمیم ویزا',
+    'fa'   => 'تصمیم صدور یا رد ویزا با مرجع صادرکننده است. شرکت صدور ویزا یا زمان تصمیم‌گیری مرجع را تضمین نمی‌کند.',
   ],
   'b' => [
     'en_t' => 'How our services are provided',
     'en'   => 'For your convenience, document review and follow-up of your application are carried out online. If you need an in-person meeting, please arrange it with our team in advance.',
     'ar_t' => 'طريقة تقديم الخدمات',
     'ar'   => 'تيسيراً عليكم، تتم مراجعة المستندات ومتابعة الطلب عبر الإنترنت. إذا احتجتم إلى اجتماع حضوري، يرجى التنسيق مع فريقنا مسبقاً.',
+    'fa_t' => 'نحوه ارائه خدمات',
+    'fa'   => 'برای راحتی شما، بررسی مدارک و پیگیری درخواست به‌صورت آنلاین انجام می‌شود. در صورت نیاز به جلسه حضوری، لطفاً از قبل با تیم ما هماهنگ کنید.',
   ],
   'c' => [
-    'en_t' => 'Fees',
-    'en'   => 'Amounts paid to the company are for the company\'s own services. Embassy fees are paid by the customer directly.',
-    'ar_t' => 'الرسوم',
-    'ar'   => 'المبالغ المدفوعة للشركة هي مقابل خدمات الشركة نفسها. أما رسوم السفارة فيدفعها العميل مباشرةً.',
+    'en_t' => 'Service fees',
+    'en'   => 'The fees for our services were communicated to you before you completed this form. By accepting this term, you confirm that you were informed of these fees and that you agree to them. These fees are for the company\'s own services only. Embassy, consulate and visa-centre fees are separate and are paid by you directly.',
+    'ar_t' => 'رسوم الخدمات',
+    'ar'   => 'تم إبلاغكم برسوم خدماتنا قبل تعبئة هذا النموذج. وبموافقتكم على هذا البند، تؤكدون أنكم أُبلغتم بهذه الرسوم وأنكم توافقون عليها. هذه الرسوم مقابل خدمات الشركة نفسها فقط، أما رسوم السفارة أو القنصلية أو مركز التأشيرات فهي منفصلة ويدفعها العميل مباشرةً.',
+    'fa_t' => 'هزینه خدمات',
+    'fa'   => 'هزینه خدمات ما پیش از تکمیل این فرم به شما اعلام شده است. با پذیرش این بند، تأیید می‌کنید که از این هزینه‌ها مطلع شده‌اید و آن‌ها را می‌پذیرید. این هزینه‌ها فقط بابت خدمات خود شرکت است. هزینه سفارت، کنسولگری یا مرکز ویزا جداگانه است و مستقیماً توسط شما پرداخت می‌شود.',
   ],
   'd' => [
     'en_t' => 'Visa refusal and refunds',
     'en'   => 'A visa refusal does not, by itself, entitle the customer to a refund of service fees for services that were correctly performed as agreed. The customer\'s rights regarding services not performed, or any failure by the company, remain protected.',
     'ar_t' => 'رفض التأشيرة واسترداد المبالغ',
     'ar'   => 'رفض التأشيرة بحد ذاته لا يوجب استرداد رسوم الخدمات التي نُفِّذت بشكل صحيح وفق الاتفاق. وتبقى حقوق العميل محفوظة فيما يتعلق بالخدمات غير المنفَّذة أو أي تقصير من جانب الشركة.',
+    'fa_t' => 'ریجکتی و بازپرداخت',
+    'fa'   => 'رد ویزا به‌تنهایی موجب بازپرداخت کارمزد خدماتی که مطابق توافق به‌درستی انجام شده‌اند نمی‌شود. حقوق مشتری درباره خدمات انجام‌نشده یا قصور شرکت محفوظ است.',
   ],
 ];
-$TERMS_NOTE = [
-  'en' => 'The service fee and the description of your order are agreed with you separately. This form only records your acceptance of the general service terms.',
-  'ar' => 'يتم الاتفاق معكم بشكل منفصل على رسوم الخدمة ووصف طلبكم. يقتصر هذا النموذج على تسجيل موافقتكم على الشروط العامة للخدمات.',
-];
 $DECLARATION = [
-  'en' => 'I have read the full agreement, my details above are correct, and I accept these terms. The signature I drew is my signature on this agreement.',
-  'ar' => 'لقد قرأت الاتفاقية كاملةً، وبياناتي أعلاه صحيحة، وأوافق على هذه الشروط. التوقيع الذي رسمته هو توقيعي على هذه الاتفاقية.',
+  'en' => 'I have read all of the terms above, the details I have entered are correct, and I accept these terms.',
+  'ar' => 'لقد قرأت جميع الشروط أعلاه، والبيانات التي أدخلتها صحيحة، وأوافق على هذه الشروط.',
+  'fa' => 'همه شرایط بالا را خوانده‌ام، اطلاعاتی که وارد کرده‌ام درست است و این شرایط را می‌پذیرم.',
 ];
+$LANG_NAMES = ['en' => 'English', 'ar' => 'Arabic', 'fa' => 'Persian'];
 
 // Library files fetched once from GitHub (pinned version, SHA-256 checked).
 $LIBS = [
@@ -291,15 +297,13 @@ function norm_name($s) {
 function public_state() {
   $s = $_SESSION;
   return [
-    'details' => $s['details'] ?? null,
-    'terms'   => $s['terms'] ?? [],
-    'sub'     => isset($s['sub']) ? ['id' => $s['sub']['id'], 'email' => $s['sub']['email'], 'file_ok' => is_file($s['sub']['file'])] : null,
+    'sub' => isset($s['sub']) ? ['id' => $s['sub']['id'], 'email' => $s['sub']['email'], 'file_ok' => is_file($s['sub']['file'])] : null,
   ];
 }
 
 // ---------------------------------------------------------------- PDF
-function build_pdf($snap, $sigBytes, $dest) {
-  global $P, $COMPANY, $TERMS, $TERMS_NOTE, $DECLARATION;
+function build_pdf($snap, $dest) {
+  global $P, $COMPANY, $TERMS, $DECLARATION, $LANG_NAMES;
   if (!defined('K_TCPDF_EXTERNAL_CONFIG')) {
     define('K_TCPDF_EXTERNAL_CONFIG', true);
     define('K_PATH_MAIN', "$P/lib/tcpdf/");
@@ -323,65 +327,42 @@ function build_pdf($snap, $sigBytes, $dest) {
   $pdf->SetMargins(16, 14, 16);
   $pdf->SetAutoPageBreak(true, 16);
   $pdf->AddPage();
-  $pdf->SetFont('dejavusans', '', 9.5);
+  $en = function ($html) use ($pdf) { $pdf->setRTL(false); $pdf->SetFont('dejavusans', '', 9.5); $pdf->writeHTML($html, true, false, true, false, ''); };
+  $rtl = function ($html, $font, $size) use ($pdf) { $pdf->setRTL(true); $pdf->SetFont($font, '', $size); $pdf->writeHTML($html, true, false, true, false, ''); $pdf->setRTL(false); };
 
-  $html = '<table cellpadding="2"><tr><td width="60%"><b style="font-size:13pt;color:#13294b">' . h($COMPANY['legal']) . '</b><br>'
+  $en('<table cellpadding="2"><tr><td width="60%"><b style="font-size:13pt;color:#1e1b3a">' . h($COMPANY['legal']) . '</b><br>'
     . 'Trading as ' . h($COMPANY['brand']) . '<br>Dubai Licence No. ' . h($COMPANY['licence']) . '</td>'
     . '<td width="40%" align="right"><span style="font-size:8pt;color:#555">Tracking No.</span><br><b style="font-size:12pt">' . h($snap['id']) . '</b><br>'
     . '<span style="font-size:8pt">' . h($snap['time_label']) . '</span></td></tr></table>'
-    . '<hr><h2 style="color:#0b7d73;font-size:14pt">Visa Service Terms Agreement</h2>';
-  $pdf->writeHTML($html, true, false, true, false, '');
-  $pdf->setRTL(true);
-  $pdf->SetFont('aealarabiya', '', 12);
-  $pdf->writeHTML('<span style="font-size:13pt"><b>' . h($COMPANY['arabic']) . '</b></span><br>اتفاقية شروط خدمات التأشيرة<br>رخصة دبي رقم ' . h($COMPANY['licence']), true, false, true, false, '');
-  $pdf->setRTL(false);
-  $pdf->SetFont('dejavusans', '', 9.5);
+    . '<hr><h2 style="color:#5b4bf0;font-size:14pt">Visa Service Terms Agreement</h2>');
+  $rtl('<span style="font-size:13pt"><b>' . h($COMPANY['arabic']) . '</b></span><br>اتفاقية شروط خدمات التأشيرة<br>رخصة دبي رقم ' . h($COMPANY['licence']), 'aealarabiya', 12);
 
-  $rows = [
-    ['Full name', 'الاسم الكامل', $c['name'], null],
-    ['Mobile', 'رقم الهاتف المتحرك', $c['phone'], null],
-    ['Email', 'البريد الإلكتروني', $c['email'], null],
-  ];
+  $rows = [['Full name', 'الاسم الكامل', $c['name']], ['Mobile', 'رقم الهاتف المتحرك', $c['phone']], ['Email', 'البريد الإلكتروني', $c['email']],
+           ['Form language', 'لغة النموذج', $LANG_NAMES[$snap['lang']]]];
   $t = '<h3 style="font-size:11pt">Customer details</h3><table border="0.3" cellpadding="4">';
-  foreach ($rows as $r) {
-    $note = '';
-    $t .= '<tr><td width="34%" style="background-color:#eef4f8">' . h($r[0]) . '<br><span style="font-size:8.5pt">' . h($r[1]) . '</span></td><td width="66%"><b>' . h($r[2]) . '</b>' . $note . '</td></tr>';
-  }
-  $t .= '</table><p style="font-size:7.5pt;color:#555">Name, mobile and email were entered by the customer and were not verified.</p>';
-  $pdf->writeHTML($t, true, false, true, false, '');
+  foreach ($rows as $r)
+    $t .= '<tr><td width="34%" style="background-color:#f3f1ff">' . h($r[0]) . '<br><span style="font-size:8.5pt">' . h($r[1]) . '</span></td><td width="66%"><b>' . h($r[2]) . '</b></td></tr>';
+  $en($t . '</table><p style="font-size:7.5pt;color:#555">Name, mobile and email were entered by the customer and were not verified.</p>');
 
-  $en = '<h3 style="font-size:11pt">Terms accepted</h3>';
+  $x = '<h3 style="font-size:11pt">Terms accepted</h3>';
   $i = 0;
-  foreach ($TERMS as $k => $term) {
-    $i++;
-    $en .= '<p><b>' . $i . '. ' . h($term['en_t']) . '</b><br>' . h($term['en']) . '<br><span style="font-size:7.5pt;color:#0b7d73">✓ Accepted separately — ' . h($snap['terms_at'][$k]) . '</span></p>';
-  }
-  $en .= '<p style="font-size:9pt"><i>' . h($TERMS_NOTE['en']) . '</i></p>';
-  $pdf->writeHTML($en, true, false, true, false, '');
+  foreach ($TERMS as $k => $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['en_t']) . '</b><br>' . h($term['en']) . '<br><span style="font-size:7.5pt;color:#5b4bf0">✓ Accepted</span></p>'; }
+  $en($x);
+  $x = '<h3>الشروط المقبولة</h3>'; $i = 0;
+  foreach ($TERMS as $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['ar_t']) . '</b><br>' . h($term['ar']) . '</p>'; }
+  $rtl($x, 'aealarabiya', 12);
+  $x = '<h3>شرایط پذیرفته‌شده</h3>'; $i = 0;
+  foreach ($TERMS as $term) { $i++; $x .= '<p><b>' . $i . '. ' . h($term['fa_t']) . '</b><br>' . h($term['fa']) . '</p>'; }
+  $rtl($x, 'dejavusans', 9.5);
 
-  $pdf->setRTL(true);
-  $pdf->SetFont('aealarabiya', '', 12);
-  $ar = '<h3>الشروط المقبولة</h3>';
-  $i = 0;
-  foreach ($TERMS as $k => $term) { $i++; $ar .= '<p><b>' . $i . '. ' . h($term['ar_t']) . '</b><br>' . h($term['ar']) . '</p>'; }
-  $ar .= '<p>' . h($TERMS_NOTE['ar']) . '</p>';
-  $pdf->writeHTML($ar, true, false, true, false, '');
-  $pdf->setRTL(false);
-  $pdf->SetFont('dejavusans', '', 9.5);
-
-  if ($pdf->GetY() > 215) $pdf->AddPage();
-  $pdf->writeHTML('<h3 style="font-size:11pt">Declaration and signature</h3><p>' . h($DECLARATION['en']) . '</p>', true, false, true, false, '');
-  $pdf->setRTL(true);
-  $pdf->SetFont('aealarabiya', '', 12);
-  $pdf->writeHTML('<h3>الإقرار والتوقيع</h3><p>' . h($DECLARATION['ar']) . '</p>', true, false, true, false, '');
-  $pdf->setRTL(false);
-  $pdf->SetFont('dejavusans', '', 9.5);
-  $y = $pdf->GetY() + 2;
-  $pdf->Rect(16, $y, 80, 34);
-  $pdf->Image('@' . $sigBytes, 17, $y + 1, 78, 32, 'JPG', '', '', false, 300, '', false, false, 0, 'CM');
-  $pdf->SetXY(100, $y);
-  $pdf->writeHTMLCell(94, 34, 100, $y, '<b>' . h($c['name']) . '</b><br>Signed electronically on the customer\'s device.<br>Submitted: ' . h($snap['time_label'])
-    . '<br><span style="font-size:7.5pt;color:#555">IP address: ' . h($snap['ip']) . '<br>Terms version ' . h($snap['terms_version']) . '<br>SHA-256 of terms: ' . h(substr($snap['terms_hash'], 0, 32)) . '…</span>', 0, 1);
+  if ($pdf->GetY() > 220) $pdf->AddPage();
+  $en('<h3 style="font-size:11pt">Declaration</h3><p>' . h($DECLARATION['en']) . '</p>');
+  $rtl('<p>' . h($DECLARATION['ar']) . '</p>', 'aealarabiya', 12);
+  $rtl('<p>' . h($DECLARATION['fa']) . '</p>', 'dejavusans', 9.5);
+  $en('<table border="0.3" cellpadding="6"><tr><td style="background-color:#f8f7ff">Accepted electronically by the customer:<br><b>' . h($c['name']) . '</b><br>'
+    . 'Each term above was ticked separately and the declaration was confirmed before the form was submitted.<br>'
+    . 'Submitted: ' . h($snap['time_label']) . '<br><span style="font-size:7.5pt;color:#555">IP address: ' . h($snap['ip'])
+    . ' · Terms version ' . h($snap['terms_version']) . ' · SHA-256 of terms: ' . h(substr($snap['terms_hash'], 0, 32)) . '…</span></td></tr></table>');
   $pdf->Output($dest, 'F');
   return is_file($dest);
 }
@@ -406,10 +387,10 @@ function send_company_email(&$sub) {
     $m->setFrom($CONFIG['mail_from'], $COMPANY['brand'] . ' Agreements');
     foreach (company_recipients($CONFIG) as $to) $m->addAddress($to);
     $c = $sub['snap']['customer'];
-    $m->Subject = 'Signed visa service terms ' . $sub['id'] . ' — ' . $c['name'];
-    $m->Body = "A customer signed the visa service terms.\n\nTracking No.: {$sub['id']}\nSubmitted: {$sub['snap']['time_label']}\n"
+    $m->Subject = 'Accepted visa service terms ' . $sub['id'] . ' — ' . $c['name'];
+    $m->Body = "A customer accepted the visa service terms.\n\nTracking No.: {$sub['id']}\nSubmitted: {$sub['snap']['time_label']}\n"
       . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\n\n"
-      . "The signed agreement is attached. Keep this email: the file is deleted from the website automatically after a short time.";
+      . "The agreement is attached. Keep this email: the file is deleted from the website automatically after a short time.";
     $m->addAttachment($sub['file'], 'TravelMarket-Agreement-' . $sub['id'] . '.pdf', 'base64', 'application/pdf');
     $m->send();
     return true;
@@ -446,64 +427,34 @@ if ($a !== '') {
 
   if ($a === 'state') out(['ok' => true, 'state' => public_state()]);
 
-  if ($a === 'details') {
-    if ($locked) fail('locked');
-    $d = [
-      'name'   => norm_name($in['name'] ?? ''),
-      'phone'  => preg_match('/^\+?[0-9][0-9 \-()]{6,19}$/', trim($in['phone'] ?? '')) ? trim($in['phone']) : '',
-      'email'  => filter_var(trim($in['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '',
-    ];
-    $bad = array_keys(array_filter($d, function ($v) { return $v === ''; }));
-    if ($bad) fail('invalid', 422, ['fields' => $bad]);
-    if (mb_strlen($d['email']) > 120) fail('invalid', 422, ['fields' => ['email']]);
-    $d['confirmed'] = time();
-    $_SESSION['details'] = $d;
-    out(['ok' => true, 'state' => public_state()]);
-  }
-
-  if ($a === 'terms') {
-    if ($locked) fail('locked');
-    if (empty($_SESSION['details']['confirmed'])) fail('need_details', 409);
-    $k = $in['key'] ?? '';
-    if (!isset($TERMS[$k])) fail('invalid');
-    if (($in['accepted'] ?? '') === '1') $_SESSION['terms'][$k] = time();
-    else unset($_SESSION['terms'][$k]);
-    out(['ok' => true, 'state' => public_state()]);
-  }
-
   if ($a === 'submit') {
     if ($locked) out(['ok' => true, 'state' => public_state()]); // repeated click / refresh: no new agreement
-    if (empty($_SESSION['details']['confirmed'])) fail('need_details', 409);
-    foreach ($TERMS as $k => $_) if (empty($_SESSION['terms'][$k])) fail('need_terms', 409);
-    if (($in['final'] ?? '') !== '1') fail('need_final', 422);
-    if (!preg_match('#^data:image/jpeg;base64,([A-Za-z0-9+/=]+)$#', $in['signature'] ?? '', $m)) fail('need_signature', 422);
-    $sig = base64_decode($m[1], true);
-    if (!$sig || strlen($sig) > 600000 || !($gi = @getimagesizefromstring($sig)) || $gi[2] !== IMAGETYPE_JPEG) fail('need_signature', 422);
-    $im = @imagecreatefromstring($sig);
-    if (!$im) fail('need_signature', 422);
-    $dark = 0; $w = imagesx($im); $hh = imagesy($im);
-    for ($x = 0; $x < $w; $x += 2) for ($y = 0; $y < $hh; $y += 2) { $rgb = imagecolorat($im, $x, $y); if ((($rgb >> 16) & 255) + (($rgb >> 8) & 255) + ($rgb & 255) < 300) $dark++; }
-    imagedestroy($im);
-    if ($dark < 60) fail('need_signature', 422);
+    $d = [
+      'name'  => norm_name($in['name'] ?? ''),
+      'phone' => preg_match('/^\+?[0-9][0-9 \-()]{6,19}$/', trim($in['phone'] ?? '')) ? trim($in['phone']) : '',
+      'email' => filter_var(trim($in['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '',
+    ];
+    if (mb_strlen($d['email']) > 120) $d['email'] = '';
+    $bad = array_keys(array_filter($d, function ($v) { return $v === ''; }));
+    foreach ($TERMS as $k => $_) if (($in['t_' . $k] ?? '') !== '1') $bad[] = 'term_' . $k;
+    if (($in['final'] ?? '') !== '1') $bad[] = 'final';
+    if ($bad) fail('invalid', 422, ['fields' => $bad]);
     if (!rate_ok('sub-ip-' . client_ip(), 20, 3600)) fail('rate', 429);
+    $lang = isset($LANG_NAMES[$in['lang'] ?? '']) ? $in['lang'] : 'en';
 
     $now = new DateTime('now', new DateTimeZone('Asia/Dubai'));
     $id = 'TM-' . $now->format('ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
-    $fmt = function ($ts) { $d = new DateTime('@' . $ts); $d->setTimezone(new DateTimeZone('Asia/Dubai')); return $d->format('d M Y, H:i:s') . ' (Dubai time)'; };
-    $termsAt = [];
-    foreach ($TERMS as $k => $_) $termsAt[$k] = $fmt($_SESSION['terms'][$k]);
-    $det = $_SESSION['details'];
     $snap = [
       'id' => $id,
       'time_label' => $now->format('d M Y, H:i:s') . ' (Dubai time, GST)',
-      'customer' => ['name' => $det['name'], 'phone' => $det['phone'], 'email' => $det['email']],
-      'terms_at' => $termsAt,
+      'customer' => $d,
+      'lang' => $lang,
       'terms_version' => TERMS_VERSION,
-      'terms_hash' => hash('sha256', json_encode([$TERMS, $TERMS_NOTE, $DECLARATION], JSON_UNESCAPED_UNICODE)),
+      'terms_hash' => hash('sha256', json_encode([$TERMS, $DECLARATION], JSON_UNESCAPED_UNICODE)),
       'ip' => client_ip(),
     ];
     $file = "$P/files/" . bin2hex(random_bytes(16)) . '.pdf';
-    try { $okPdf = build_pdf($snap, $sig, $file); } catch (Throwable $e) { error_log('tm_visa: pdf failed ' . $e->getMessage()); $okPdf = false; }
+    try { $okPdf = build_pdf($snap, $file); } catch (Throwable $e) { error_log('tm_visa: pdf failed ' . $e->getMessage()); $okPdf = false; }
     if (!$okPdf) fail('pdf', 500);
     @chmod($file, 0600);
     $_SESSION['sub'] = ['id' => $id, 'file' => $file, 'snap' => $snap, 'email' => 'pending', 'email_attempts' => 0];
@@ -529,7 +480,6 @@ $BOOT = [
   'csrf' => $_SESSION['csrf'],
   'company' => $COMPANY,
   'terms' => $TERMS,
-  'note' => $TERMS_NOTE,
   'decl' => $DECLARATION,
   'keep' => (int)round($KEEP / 60),
   'state' => public_state(),
@@ -563,9 +513,6 @@ header{position:relative;text-align:center;padding:16px 0 24px}
 .lang{position:absolute;top:0;inset-inline-end:0;background:rgba(255,255,255,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.9);border-radius:999px;padding:7px 15px;color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(109,93,252,.12)}
 .card{position:relative;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.95);border-radius:30px;padding:34px 24px 30px;min-height:62vh;box-shadow:0 30px 80px rgba(109,93,252,.18),0 4px 14px rgba(30,27,58,.05)}
 @media (min-width:700px){.wrap{padding-top:40px;max-width:760px}.card{padding:48px 56px 44px;min-height:560px}body{font-size:17.5px}}
-.ico{width:76px;height:76px;margin:6px auto 18px;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:38px;background:linear-gradient(135deg,#efeaff,#ffe9f4);box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),0 10px 24px rgba(139,92,246,.18)}
-.bar{height:8px;background:#eeebfa;border-radius:999px;overflow:hidden;margin-bottom:10px}.bar i{display:block;height:100%;background:var(--grad);border-radius:999px;width:0;transition:width .4s ease}
-.stepno{font-size:13px;color:var(--muted);text-align:center;margin-bottom:8px;font-weight:600}
 h1,h2{text-align:center;letter-spacing:-.6px;line-height:1.25}h1{font-size:30px;margin:0 0 12px}h2{font-size:26px;margin:0 0 14px}p{margin:0 0 14px}
 @media (min-width:700px){h1{font-size:36px}h2{font-size:30px}}
 .muted{color:var(--muted);font-size:15px}
@@ -573,7 +520,6 @@ h1,h2{text-align:center;letter-spacing:-.6px;line-height:1.25}h1{font-size:30px;
 .btn:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(109,93,252,.42)}.btn:active{transform:translateY(1px)}
 .btn[disabled]{opacity:.38;box-shadow:none;transform:none}
 .btn.alt{background:#fff;color:var(--teal);border:1.5px solid var(--line);box-shadow:0 6px 16px rgba(30,27,58,.05)}
-.nav{display:flex;gap:12px;margin-top:20px}.nav .btn{margin-top:0}
 label.f{display:block;font-size:14px;font-weight:700;color:var(--muted);margin:16px 6px 7px}
 input[type=text],input[type=email],input[type=tel],input[type=date]{width:100%;padding:16px 22px;border:1.5px solid var(--line);border-radius:999px;font:inherit;font-size:16px;color:var(--ink);background:#fff;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s,box-shadow .15s}
 input:focus{border-color:#8b5cf6;box-shadow:0 0 0 4px rgba(139,92,246,.15)}
@@ -584,213 +530,165 @@ input:focus{border-color:#8b5cf6;box-shadow:0 0 0 4px rgba(139,92,246,.15)}
 .msg{padding:14px 16px;border-radius:18px;font-size:15px;margin-top:14px}.msg.err{background:#fff1f2;color:var(--err)}.msg.ok{background:#ecfdf3;color:var(--ok)}.msg.info{background:var(--soft)}
 .hide{display:none!important}
 label.btn,label.link{position:relative;text-align:center;display:block}.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
-dl{margin:0;background:var(--soft);border-radius:20px;padding:16px 20px}dt{font-size:12.5px;color:var(--muted)}dd{margin:0 0 10px;font-weight:700;word-break:break-word}
-.agree{max-height:320px;overflow:auto;border:1.5px solid var(--line);border-radius:20px;padding:16px 18px;font-size:15px;background:#fff}
-.agree h3{font-size:16px;margin:12px 0 4px}
-canvas{display:block;width:100%;height:200px;border:2px dashed #cbbcfb;border-radius:20px;background:#fff;touch-action:none}
 .link{background:none;border:0;color:var(--teal);font:inherit;font-size:15px;font-weight:600;text-decoration:none;padding:10px 0;cursor:pointer}
 .mt{margin-top:14px}.bad{border-color:var(--err)!important}.th{margin:0 0 8px;font-size:20px;text-align:center}.sh{font-size:16px}a.btn{text-align:center;text-decoration:none}
 .ctr{text-align:center}
 .big{font-size:28px;font-weight:800;letter-spacing:1px;text-align:center;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.langs{position:absolute;top:0;inset-inline-end:0;display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.75);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.95);border-radius:999px;box-shadow:0 4px 14px rgba(109,93,252,.12)}
+.langs button{border:0;background:none;border-radius:999px;padding:6px 11px;font:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.langs button[aria-pressed=true]{background:var(--grad);color:#fff}
+@media (max-width:480px){header{padding-top:52px}}
+.intro{margin-bottom:26px}
+.term{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:20px 20px 16px;margin-top:16px}
+.term.ok{border-color:#c9b8fb;background:#fdfcff}
+.term.bad{border-color:var(--err)}
+.term h3{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:18px}
+.num{flex:none;width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;background:var(--grad)}
+.term p{margin:0}
+.term .chk{margin-top:14px;border:0;background:var(--soft);padding:12px 14px;border-radius:16px}
+.sec{margin:34px 0 4px;text-align:center}
+.sec span{display:inline-block;font-size:30px;margin-bottom:4px}
+.chk.bad{border-color:var(--err)}
+.big{margin:8px 0 18px}
+.done{text-align:center;font-size:56px;margin:6px 0 10px}
 </style>
 </head>
 <body>
 <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
 <div class="wrap">
   <header>
-    <button class="lang" id="langBtn" type="button">العربية</button>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-lang="en">English</button><button type="button" data-lang="ar">العربية</button><button type="button" data-lang="fa">فارسی</button>
+    </div>
     <div class="brand"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c6cf5"/><stop offset="1" stop-color="#5046e5"/></linearGradient></defs><rect x="3" y="3" width="26" height="26" rx="8" fill="none" stroke="url(#lg)" stroke-width="3"/><path d="M10.5 16.5l4 4 7-8" fill="none" stroke="url(#lg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Travel Market</span><small id="legal">SOUQ AL SAFAR TOURISM L.L.C</small></div>
   </header>
-  <div class="card">
-    <div class="bar"><i id="barFill"></i></div>
-    <div class="stepno" id="stepNo"></div>
-    <div class="ico" id="ico" aria-hidden="true"></div>
-    <main id="view"></main>
-  </div>
+  <main class="card" id="view"></main>
 </div>
 <script nonce="<?= $NONCE ?>">
 const BOOT = <?= json_encode($BOOT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const T = {
-en:{lang:'العربية',step:'Step {n} of 5',start:'Start',next:'Next',back:'Back',
- w_title:'Visa service terms',w_intro:'Please review and sign our general visa service terms. It takes about 3 minutes.',
- 
- e_rate:'Too many attempts. Please wait a while and try again.',
- e_net:'Connection problem. Please check your internet and try again.',e_generic:'Something went wrong. Please try again.',
- e_pdf:'The agreement could not be created. Please try again.',e_setup:'This page is temporarily unavailable.',
- d_title:'Your details',d_intro:'Please enter your full name, mobile number and email.',
- d_name:'Full name',d_phone:'Mobile number',d_email:'Email',d_btn:'Continue',d_bad:'Please check the highlighted fields.',
- t_title:'Service terms',t_part:'Term {n} of 4',t_accept:'I have read and accept this term.',
- r_title:'Review and sign',r_details:'Your details',r_edit:'Edit details',r_agree:'Full agreement',
- r_sign:'Sign below with your finger',r_clear:'Clear signature',r_final:'',r_btn:'Confirm and create agreement',r_need_sig:'Please sign in the box.',
- r_wait:'Creating your agreement…',
+en:{title:'Visa service terms',intro:'Please read each term below and tick to accept it. At the end, enter your details and submit.',
+ accept:'I have read and accept this term.',sec:'Your details',sec_intro:'Before finishing, please enter your full name, mobile number and email.',
+ name:'Full name',phone:'Mobile number',email:'Email',contact_note:'Your details are recorded as you type them; they are not verified.',
+ submit:'Accept and create agreement',wait:'Creating your agreement…',
+ missing:'Please accept every term, confirm the declaration and fill in the highlighted fields.',
+ e_rate:'Too many attempts. Please wait a while and try again.',e_net:'Connection problem. Please check your internet and try again.',
+ e_generic:'Something went wrong. Please try again.',e_pdf:'The agreement could not be created. Please try again.',e_setup:'This page is temporarily unavailable.',
  f_title:'Your agreement is ready',f_track:'Tracking number',f_dl:'Download agreement (PDF)',
  f_mail_ok:'A copy was handed to our mail server for delivery to Travel Market.',
- f_mail_fail:'We could not send the copy to Travel Market yet. Your PDF is still available below.',f_retry:'Try sending again',
+ f_mail_fail:'We could not send the copy to Travel Market yet. Your PDF is still available above.',f_retry:'Try sending again',
  f_mail_wait:'Sending a copy to Travel Market…',f_keep:'Please download and keep your copy. It will be deleted from this website within {keep} minutes.',
  f_gone:'The file has been deleted from this website. Please contact Travel Market with your tracking number.',
- contact_note:'Your mobile and email are recorded as you typed them; they are not verified.'},
-ar:{lang:'English',step:'الخطوة {n} من 5',start:'ابدأ',next:'التالي',back:'السابق',
- w_title:'شروط خدمات التأشيرة',w_intro:'يرجى مراجعة الشروط العامة لخدمات التأشيرة والتوقيع عليها. يستغرق ذلك نحو 3 دقائق.',
- 
- e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',
- e_net:'مشكلة في الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً.',e_generic:'حدث خطأ. يرجى المحاولة مرة أخرى.',
- e_pdf:'تعذر إنشاء الاتفاقية. يرجى المحاولة مرة أخرى.',e_setup:'هذه الصفحة غير متاحة مؤقتاً.',
- d_title:'بياناتك',d_intro:'يرجى إدخال اسمك الكامل ورقم هاتفك المتحرك وبريدك الإلكتروني.',
- d_name:'الاسم الكامل',d_phone:'رقم الهاتف المتحرك',d_email:'البريد الإلكتروني',d_btn:'متابعة',d_bad:'يرجى التحقق من الحقول المحددة.',
- t_title:'شروط الخدمة',t_part:'البند {n} من 4',t_accept:'قرأت هذا البند وأوافق عليه.',
- r_title:'المراجعة والتوقيع',r_details:'بياناتك',r_edit:'تعديل البيانات',r_agree:'الاتفاقية كاملة',
- r_sign:'وقّع في المربع أدناه بإصبعك',r_clear:'مسح التوقيع',r_final:'',r_btn:'تأكيد وإنشاء الاتفاقية',r_need_sig:'يرجى التوقيع داخل المربع.',
- r_wait:'جارٍ إنشاء الاتفاقية…',
+ licence:'Dubai Licence No.'},
+ar:{title:'شروط خدمات التأشيرة',intro:'يرجى قراءة كل بند أدناه ووضع علامة للموافقة عليه. في النهاية، أدخل بياناتك وأرسل النموذج.',
+ accept:'قرأت هذا البند وأوافق عليه.',sec:'بياناتك',sec_intro:'قبل الإنهاء، يرجى إدخال اسمك الكامل ورقم هاتفك المتحرك وبريدك الإلكتروني.',
+ name:'الاسم الكامل',phone:'رقم الهاتف المتحرك',email:'البريد الإلكتروني',contact_note:'تُسجَّل بياناتك كما أدخلتها، دون التحقق منها.',
+ submit:'موافقة وإنشاء الاتفاقية',wait:'جارٍ إنشاء الاتفاقية…',
+ missing:'يرجى الموافقة على جميع البنود وتأكيد الإقرار وتعبئة الحقول المحددة.',
+ e_rate:'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.',e_net:'مشكلة في الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً.',
+ e_generic:'حدث خطأ. يرجى المحاولة مرة أخرى.',e_pdf:'تعذر إنشاء الاتفاقية. يرجى المحاولة مرة أخرى.',e_setup:'هذه الصفحة غير متاحة مؤقتاً.',
  f_title:'اتفاقيتك جاهزة',f_track:'رقم المتابعة',f_dl:'تنزيل الاتفاقية (PDF)',
  f_mail_ok:'تم تسليم نسخة إلى خادم البريد لدينا لإرسالها إلى Travel Market.',
- f_mail_fail:'لم نتمكن بعد من إرسال النسخة إلى Travel Market. ملف PDF لا يزال متاحاً أدناه.',f_retry:'إعادة محاولة الإرسال',
+ f_mail_fail:'لم نتمكن بعد من إرسال النسخة إلى Travel Market. ملف PDF لا يزال متاحاً أعلاه.',f_retry:'إعادة محاولة الإرسال',
  f_mail_wait:'جارٍ إرسال نسخة إلى Travel Market…',f_keep:'يرجى تنزيل نسختك والاحتفاظ بها. ستُحذف من هذا الموقع خلال {keep} دقيقة.',
  f_gone:'تم حذف الملف من هذا الموقع. يرجى التواصل مع Travel Market مع ذكر رقم المتابعة.',
- contact_note:'يُسجَّل رقم الهاتف والبريد الإلكتروني كما أدخلتهما، دون التحقق منهما.'}
+ licence:'رخصة دبي رقم'},
+fa:{title:'شرایط خدمات ویزا',intro:'لطفاً هر بند را بخوانید و برای پذیرش آن تیک بزنید. در پایان، مشخصات خود را وارد و فرم را ارسال کنید.',
+ accept:'این بند را خواندم و می‌پذیرم.',sec:'مشخصات شما',sec_intro:'پیش از پایان، لطفاً نام کامل، شماره موبایل و ایمیل خود را وارد کنید.',
+ name:'نام کامل',phone:'شماره موبایل',email:'ایمیل',contact_note:'مشخصات شما همان‌طور که وارد می‌کنید ثبت می‌شود و تأیید نمی‌شود.',
+ submit:'پذیرش و ساخت توافق‌نامه',wait:'در حال ساخت توافق‌نامه…',
+ missing:'لطفاً همه بندها را بپذیرید، تأیید نهایی را بزنید و فیلدهای مشخص‌شده را پر کنید.',
+ e_rate:'تعداد تلاش‌ها زیاد است. لطفاً کمی صبر کنید و دوباره امتحان کنید.',e_net:'مشکل در اتصال. لطفاً اینترنت را بررسی و دوباره امتحان کنید.',
+ e_generic:'خطایی رخ داد. لطفاً دوباره امتحان کنید.',e_pdf:'توافق‌نامه ساخته نشد. لطفاً دوباره امتحان کنید.',e_setup:'این صفحه موقتاً در دسترس نیست.',
+ f_title:'توافق‌نامه شما آماده است',f_track:'شماره پیگیری',f_dl:'دانلود توافق‌نامه (PDF)',
+ f_mail_ok:'یک نسخه برای ارسال به Travel Market به سرور ایمیل ما تحویل داده شد.',
+ f_mail_fail:'هنوز نتوانستیم نسخه را برای Travel Market بفرستیم. فایل PDF همچنان بالاتر در دسترس است.',f_retry:'تلاش دوباره برای ارسال',
+ f_mail_wait:'در حال ارسال نسخه به Travel Market…',f_keep:'لطفاً نسخه خود را دانلود و نگهداری کنید. این فایل تا {keep} دقیقه دیگر از این سایت پاک می‌شود.',
+ f_gone:'فایل از این سایت پاک شده است. لطفاً با شماره پیگیری با Travel Market تماس بگیرید.',
+ licence:'شماره لایسنس دبی'}
 };
+const KEYS = ['a','b','c','d'];
 let lang = 'en';
-try { if (localStorage.getItem('tm_lang') === 'ar') lang = 'ar'; } catch (e) {}
-let S = BOOT.state, step = 1, tstep = 0, busy = false, msg = null;
-const form = {name:'',phone:'',email:''};
-let sigData = null, sigInk = 0, finalChk = false, badFields = [];
+try { const l = localStorage.getItem('tm_lang'); if (T[l]) lang = l; } catch (e) {}
+let S = BOOT.state, busy = false, msg = null, bad = [];
+const F = {name:'', phone:'', email:'', final:false, t:{}};
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const t = (k, v = {}) => (T[lang][k] || T.en[k] || k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? BOOT[x] ?? '');
-const KEYS = ['a','b','c','d'];
+const termText = (k, f) => BOOT.terms[k][lang + f] || BOOT.terms[k]['en' + f];
 
-function syncForm() {
-  const d = S.details;
-  if (d) for (const k in form) form[k] = form[k] || d[k] || '';
-}
-function maxStep() {
-  if (S.sub) return 5;
-  if (!S.details || !S.details.confirmed) return 2;
-  return KEYS.every(k => S.terms[k]) ? 4 : 3;
-}
-async function api(a, data, isForm) {
-  const body = isForm ? data : new URLSearchParams(data || {});
+async function api(a, data) {
   let r;
-  try { r = await fetch('?a=' + a, {method:'POST', headers:{'X-CSRF':BOOT.csrf}, body, credentials:'same-origin'}); }
+  try { r = await fetch('?a=' + a, {method:'POST', headers:{'X-CSRF':BOOT.csrf}, body:new URLSearchParams(data || {}), credentials:'same-origin'}); }
   catch (e) { return {ok:false, error:'net'}; }
   try { const j = await r.json(); if (j.state) S = j.state; return j; } catch (e) { return {ok:false, error:'generic'}; }
 }
-function errText(e) { return T[lang]['e_' + e] ? t('e_' + e) : t('e_generic'); }
+const errText = e => T[lang]['e_' + e] ? t('e_' + e) : t('e_generic');
 
 function render() {
   document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  $('#langBtn').textContent = t('lang');
-  $('#legal').textContent = lang === 'ar' ? BOOT.company.arabic : BOOT.company.legal;
-  $('#barFill').style.width = (step / 5 * 100) + '%';
-  $('#stepNo').textContent = t('step', {n: step});
-  $('#ico').textContent = ['👋','📝','📋','✍️','🎉'][step - 1];
+  document.documentElement.dir = lang === 'en' ? 'ltr' : 'rtl';
+  document.querySelectorAll('.langs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+  $('#legal').textContent = lang === 'en' ? BOOT.company.legal : BOOT.company.arabic;
   const v = $('#view');
   const M = msg ? `<div class="msg ${msg.type}" role="alert">${esc(msg.text)}</div>` : '';
-  const navBack = `<button class="btn alt" data-go="${step - 1}" type="button">${t('back')}</button>`;
-  if (step === 1) {
-    v.innerHTML = `<h1>${t('w_title')}</h1><p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>Dubai Licence No. ${esc(BOOT.company.licence)}</span></p>
-      <p class="ctr muted">${t('w_intro')}</p>
-      <button class="btn" data-go="2" type="button">${t('start')}</button>`;
-  } else if (step === 2) {
-    const fld = (k, type, extra = '') => {
-      const bad = badFields.includes(k) ? ' class="bad"' : '';
-      return `<label class="f" for="f_${k}">${t('d_' + k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(form[k])}" ${extra}${bad}>`;
-    };
-    v.innerHTML = `<h2>${t('d_title')}</h2><p class="muted ctr">${t('d_intro')}</p>
-      ${fld('name','text','autocomplete="name"')}
-      ${fld('phone','tel','autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}${fld('email','email','autocomplete="email" dir="ltr"')}
-      <p class="hint mt">${t('contact_note')}</p>${M}
-      <button class="btn" id="conf" type="button" ${busy ? 'disabled' : ''}>${t('d_btn')}</button>
-      <div class="nav">${navBack}</div>`;
-    v.querySelectorAll('input').forEach(i => i.oninput = () => { form[i.name] = i.value; });
-    $('#conf').onclick = saveDetails;
-  } else if (step === 3) {
-    const k = KEYS[tstep], term = BOOT.terms[k];
-    v.innerHTML = `<h2>${t('t_title')}</h2><div class="stepno">${t('t_part', {n: tstep + 1})}</div>
-      <h3 class="th">${esc(term[lang + '_t'])}</h3><p>${esc(term[lang])}</p>
-      ${k === 'c' || tstep === 3 ? `<div class="msg info">${esc(BOOT.note[lang])}</div>` : ''}
-      <label class="chk"><input type="checkbox" id="acc" ${S.terms[k] ? 'checked' : ''}><span>${t('t_accept')}</span></label>${M}
-      <div class="nav"><button class="btn alt" id="tb" type="button">${t('back')}</button><button class="btn" id="tn" type="button" ${S.terms[k] && !busy ? '' : 'disabled'}>${t('next')}</button></div>`;
-    $('#acc').onchange = async e => { busy = true; const r = await api('terms', {key: k, accepted: e.target.checked ? '1' : '0'}); busy = false; msg = r.ok ? null : {type:'err', text: errText(r.error)}; render(); };
-    $('#tb').onclick = () => { msg = null; if (tstep > 0) { tstep--; render(); } else go(2); };
-    $('#tn').onclick = () => { msg = null; if (tstep < 3) { tstep++; render(); } else go(4); };
-  } else if (step === 4) {
-    const d = S.details;
-    const agree = `<h3>${esc(lang === 'ar' ? BOOT.company.arabic : BOOT.company.legal)}</h3><p class="muted">Dubai Licence No. ${esc(BOOT.company.licence)}</p>`
-      + KEYS.map((k, i) => `<h3>${i + 1}. ${esc(BOOT.terms[k][lang + '_t'])}</h3><p>${esc(BOOT.terms[k][lang])}</p>`).join('')
-      + `<p><i>${esc(BOOT.note[lang])}</i></p>`;
-    v.innerHTML = `<h2>${t('r_title')}</h2><h3 class="sh">${t('r_details')}</h3>
-      <dl><dt>${t('d_name')}</dt><dd>${esc(d.name)}</dd>
-      <dt>${t('d_phone')}</dt><dd dir="ltr">${esc(d.phone)}</dd><dt>${t('d_email')}</dt><dd dir="ltr">${esc(d.email)}</dd></dl>
-      <button class="link" data-go="2" type="button">${t('r_edit')}</button>
-      <h3 class="sh">${t('r_agree')}</h3><div class="agree">${agree}</div>
-      <label class="f">${t('r_sign')}</label><canvas id="sig"></canvas><button class="link" id="clr" type="button">${t('r_clear')}</button>
-      <label class="chk"><input type="checkbox" id="fin" ${finalChk ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
-      ${busy ? `<div class="msg info">${t('r_wait')}</div>` : ''}${M}
-      <button class="btn" id="sub" type="button" ${finalChk && !busy ? '' : 'disabled'}>${t('r_btn')}</button>
-      <div class="nav"><button class="btn alt" id="rb" type="button">${t('back')}</button></div>`;
-    setupSig();
-    $('#fin').onchange = e => { finalChk = e.target.checked; $('#sub').disabled = !finalChk || busy; };
-    $('#clr').onclick = () => { sigData = null; sigInk = 0; setupSig(); };
-    $('#rb').onclick = () => { tstep = 3; go(3); };
-    $('#sub').onclick = submit;
-  } else if (step === 5) {
+  if (S.sub) {
     const s = S.sub, e = s.email;
     const mail = e === 'accepted' ? `<div class="msg ok">${t('f_mail_ok')}</div>`
       : e === 'pending' ? `<div class="msg info">${t('f_mail_wait')}</div>`
       : `<div class="msg err">${t('f_mail_fail')}</div><button class="btn alt" id="retry" type="button" ${busy ? 'disabled' : ''}>${t('f_retry')}</button>`;
-    v.innerHTML = `<h2>${t('f_title')}</h2><p class="muted">${t('f_track')}</p><p class="big" dir="ltr">${esc(s.id)}</p>
-      ${s.file_ok ? `<a class="btn" href="?a=pdf&t=${encodeURIComponent(BOOT.csrf)}">${t('f_dl')}</a><p class="muted mt">${t('f_keep')}</p>` : `<div class="msg err">${t('f_gone')}</div>`}
+    v.innerHTML = `<div class="done" aria-hidden="true">🎉</div><h1>${t('f_title')}</h1><p class="muted ctr">${t('f_track')}</p><p class="big" dir="ltr">${esc(s.id)}</p>
+      ${s.file_ok ? `<a class="btn" href="?a=pdf&t=${encodeURIComponent(BOOT.csrf)}">${t('f_dl')}</a><p class="muted mt ctr">${t('f_keep')}</p>` : `<div class="msg err">${t('f_gone')}</div>`}
       ${mail}${M}`;
     const rb = $('#retry');
     if (rb) rb.onclick = async () => { busy = true; render(); const r = await api('email'); busy = false; msg = r.ok ? null : {type:'err', text: errText(r.error)}; render(); };
+    return;
   }
-  v.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(+b.dataset.go));
-}
-function go(n) {
-  if (busy) return;
-  msg = null; badFields = [];
-  step = Math.max(1, Math.min(n, maxStep()));
-  if (step === 3 && tstep > 3) tstep = 0;
-  syncForm(); render(); window.scrollTo(0, 0);
+  const terms = KEYS.map((k, i) => `<section class="term${F.t[k] ? ' ok' : ''}${bad.includes('term_' + k) ? ' bad' : ''}">
+      <h3><span class="num">${i + 1}</span>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p>
+      <label class="chk"><input type="checkbox" data-k="${k}" ${F.t[k] ? 'checked' : ''}><span>${t('accept')}</span></label></section>`).join('');
+  const fld = (k, type, extra) => `<label class="f" for="f_${k}">${t(k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(F[k])}" ${extra}${bad.includes(k) ? ' class="bad"' : ''}>`;
+  v.innerHTML = `<div class="intro"><h1>${t('title')}</h1>
+      <p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>${t('licence')} ${esc(BOOT.company.licence)}</span></p>
+      <p class="ctr muted">${t('intro')}</p></div>
+    ${terms}
+    <div class="sec"><span aria-hidden="true">📝</span><h2>${t('sec')}</h2><p class="muted">${t('sec_intro')}</p></div>
+    ${fld('name', 'text', 'autocomplete="name"')}
+    ${fld('phone', 'tel', 'autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}
+    ${fld('email', 'email', 'autocomplete="email" dir="ltr"')}
+    <p class="hint mt">${t('contact_note')}</p>
+    <label class="chk${bad.includes('final') ? ' bad' : ''}"><input type="checkbox" id="fin" ${F.final ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
+    ${busy ? `<div class="msg info">${t('wait')}</div>` : ''}${M}
+    <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button>`;
+  const clear = (key, el) => { bad = bad.filter(x => x !== key); el.classList.remove('bad'); if (!bad.length && msg && msg.type === 'err') { msg = null; const m = $('#view .msg.err'); if (m) m.remove(); } };
+  v.querySelectorAll('input[data-k]').forEach(c => c.onchange = () => { F.t[c.dataset.k] = c.checked; const box = c.closest('.term'); box.classList.toggle('ok', c.checked); if (c.checked) clear('term_' + c.dataset.k, box); });
+  v.querySelectorAll('input[name]').forEach(i => i.oninput = () => { F[i.name] = i.value; if (i.value.trim()) clear(i.name, i); });
+  $('#fin').onchange = e => { F.final = e.target.checked; if (F.final) clear('final', e.target.closest('.chk')); };
+  $('#sub').onclick = submit;
 }
 
-async function saveDetails() {
-  document.querySelectorAll('#view input').forEach(i => form[i.name] = i.value.trim());
-  busy = true; render();
-  const r = await api('details', form);
-  busy = false;
-  if (r.ok) { tstep = 0; go(3); return; }
-  badFields = r.fields || [];
-  msg = {type:'err', text: r.error === 'invalid' ? t('d_bad') : errText(r.error)};
-  render();
-}
-function setupSig() {
-  const c = $('#sig'); if (!c) return;
-  const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
-  const x = c.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-  if (sigData) { const im = new Image(); im.onload = () => x.drawImage(im, 0, 0, c.width, c.height); im.src = sigData; }
-  x.lineWidth = 2.6 * dpr; x.lineCap = x.lineJoin = 'round'; x.strokeStyle = '#13294b';
-  let down = false, lx = 0, ly = 0;
-  const pos = e => { const b = c.getBoundingClientRect(); return [(e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr]; };
-  c.onpointerdown = e => { down = true; c.setPointerCapture(e.pointerId); [lx, ly] = pos(e); e.preventDefault(); };
-  c.onpointermove = e => { if (!down) return; const [nx, ny] = pos(e); x.beginPath(); x.moveTo(lx, ly); x.lineTo(nx, ny); x.stroke(); sigInk += Math.hypot(nx - lx, ny - ly); lx = nx; ly = ny; e.preventDefault(); };
-  c.onpointerup = c.onpointercancel = () => { if (down) { down = false; sigData = c.toDataURL('image/jpeg', 0.85); } };
-}
 async function submit() {
-  if (sigInk < 60 || !sigData) { msg = {type:'err', text: t('r_need_sig')}; render(); return; }
+  document.querySelectorAll('#view input[name]').forEach(i => F[i.name] = i.value.trim());
+  bad = [];
+  KEYS.forEach(k => { if (!F.t[k]) bad.push('term_' + k); });
+  ['name', 'phone', 'email'].forEach(k => { if (!F[k]) bad.push(k); });
+  if (!F.final) bad.push('final');
+  if (bad.length) { msg = {type:'err', text: t('missing')}; render(); scrollToFirstBad(); return; }
   busy = true; msg = null; render();
-  const r = await api('submit', {final: finalChk ? '1' : '0', signature: sigData});
+  const data = {name: F.name, phone: F.phone, email: F.email, final: '1', lang};
+  KEYS.forEach(k => data['t_' + k] = '1');
+  const r = await api('submit', data);
   busy = false;
-  if (r.ok && S.sub) { go(5); return; }
-  msg = {type:'err', text: r.error === 'need_signature' ? t('r_need_sig') : errText(r.error)};
-  render();
+  if (r.ok && S.sub) { msg = null; render(); window.scrollTo(0, 0); return; }
+  bad = r.fields || [];
+  msg = {type:'err', text: r.error === 'invalid' ? t('missing') : errText(r.error)};
+  render(); scrollToFirstBad();
 }
-$('#langBtn').onclick = () => { lang = lang === 'en' ? 'ar' : 'en'; try { localStorage.setItem('tm_lang', lang); } catch (e) {} render(); };
-syncForm();
-step = S.sub ? 5 : 1;
+function scrollToFirstBad() { const el = document.querySelector('#view .bad') || document.querySelector('#view .msg.err'); if (el) el.scrollIntoView({block:'center', behavior:'smooth'}); }
+document.querySelectorAll('.langs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#view input[name]').forEach(i => F[i.name] = i.value);
+  lang = b.dataset.lang; try { localStorage.setItem('tm_lang', lang); } catch (e) {} msg = null; render();
+});
 render();
 </script>
 </body>
