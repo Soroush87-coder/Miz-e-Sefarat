@@ -544,7 +544,7 @@ label.btn,label.link{position:relative;text-align:center;display:block}.vh{posit
 .term{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:20px 20px 16px;margin-top:16px}
 .term.ok{border-color:#c9b8fb;background:#fdfcff}
 .term.bad{border-color:var(--err)}
-.term h3{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:18px}
+.term{display:flex;gap:14px;align-items:flex-start}.term h3{margin:2px 0 6px;font-size:18px}
 .num{flex:none;width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;background:var(--grad)}
 .term p{margin:0}
 .term .chk{margin-top:14px;border:0;background:var(--soft);padding:12px 14px;border-radius:16px}
@@ -560,31 +560,33 @@ html[lang=ar] body,html[lang=ar] input,html[lang=ar] button{font-family:"IBM Ple
 /* desktop: everything on one screen */
 @media (min-width:1024px) and (min-height:600px){
  html,body{height:100%;overflow:hidden}
- .wrap{max-width:1280px;height:100vh;display:flex;flex-direction:column;padding:14px 28px 18px}
- header{display:flex;align-items:center;justify-content:space-between;text-align:start;padding:0 4px 12px}
+ body{font-size:16px}
+ .wrap{max-width:1360px;height:100vh;display:flex;flex-direction:column;padding:14px 28px 18px}
+ header{display:flex;align-items:center;justify-content:space-between;text-align:start;padding:0 6px 12px}
  .brand{display:flex;align-items:baseline;gap:14px}.brand small{margin:0}
  .logo{font-size:22px}.logo svg{width:32px;height:32px}
  .langs{position:static;order:2}
- .card{flex:1;min-height:0;padding:24px 30px;border-radius:26px;overflow:auto}
- .layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:30px;height:100%}
+ .card{flex:1;min-height:0;padding:clamp(18px,2.6vh,30px) clamp(22px,2.4vw,36px);border-radius:26px;overflow:auto}
+ .layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(330px,1fr);gap:clamp(20px,2.2vw,34px);height:100%}
  .col-main{display:flex;flex-direction:column;min-height:0}
- .intro{margin-bottom:12px}.intro h1{font-size:28px;margin:0 0 4px;text-align:start}
- .intro p{text-align:start;font-size:14px;margin:0 0 4px}.co .sep br{display:none}.co .sep::after{content:" · "}
- .terms{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0;align-content:start}
- .term{margin:0;padding:16px 18px;border-radius:20px}.term h3{font-size:16px;margin-bottom:6px}.term p{font-size:14.5px;line-height:1.6}
- .num{width:28px;height:28px;font-size:13px;border-radius:10px}
- .col-side{display:flex;flex-direction:column;background:var(--soft);border-radius:22px;padding:18px 22px;min-height:0}
- .sec{margin:0 0 2px;text-align:start}.sec span{display:none}.sec h2{font-size:22px;margin:0 0 2px;text-align:start}.sec p{font-size:13.5px;margin:0}
- label.f{margin:10px 6px 5px;font-size:13px}
- input[type=text],input[type=email],input[type=tel]{padding:11px 18px;font-size:15px}
- .hint{margin-top:6px}.col-side .chk{margin-top:10px;padding:12px 14px;font-size:14px}
- .col-side .btn{margin-top:auto;padding:14px 20px;font-size:16px}
- .col-side .msg{padding:10px 12px;font-size:13.5px;margin-top:8px}
+ .intro{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:clamp(10px,1.6vh,18px)}
+ .intro h1{font-size:clamp(24px,3.4vh,32px);margin:0;text-align:start}
+ .intro p{text-align:start;font-size:14px;margin:0}.intro .co{text-align:end}.intro p.muted:last-child{flex-basis:100%}
+ .co .sep br{display:none}.co .sep::after{content:" · "}
+ .terms{display:flex;flex-direction:column;gap:clamp(8px,1.4vh,14px);flex:1;min-height:0}
+ .term{flex:1 1 0;margin:0;align-items:center;padding:clamp(10px,1.7vh,18px) clamp(16px,1.6vw,22px);border-radius:20px}
+ .term h3{font-size:clamp(15px,2vh,17.5px);margin:0 0 3px}
+ .term p{font-size:clamp(13.5px,1.95vh,16px);line-height:1.55}
+ .num{width:34px;height:34px;font-size:15px;border-radius:12px}
+ .col-side{display:flex;flex-direction:column;justify-content:space-between;gap:12px;background:var(--soft);border-radius:22px;padding:clamp(16px,2.4vh,26px) clamp(18px,1.8vw,26px);min-height:0}
+ .sec{margin:0;text-align:start}.sec span{display:none}.sec h2{font-size:clamp(20px,2.8vh,26px);margin:0 0 4px;text-align:start}.sec p{font-size:14px;margin:0}
+ label.f{margin:clamp(6px,1.3vh,14px) 6px 5px;font-size:13.5px}
+ input[type=text],input[type=email],input[type=tel]{padding:clamp(9px,1.5vh,14px) 18px;font-size:15.5px}
+ .hint{margin-top:8px}
+ .tail .chk{margin-top:0;padding:clamp(10px,1.6vh,16px) 16px;font-size:14.5px}
+ .tail .btn{margin-top:clamp(10px,1.6vh,16px);padding:clamp(12px,1.9vh,17px) 20px;font-size:16.5px}
+ .tail .msg{padding:10px 12px;font-size:13.5px;margin-top:8px}
  .card .done{font-size:48px}
-}
-@media (min-width:1024px) and (min-height:600px) and (max-height:760px){
- .term p{font-size:13.5px;line-height:1.5}.term{padding:12px 16px}.intro h1{font-size:24px}
- input[type=text],input[type=email],input[type=tel]{padding:9px 16px}label.f{margin-top:7px}
 }
 </style>
 </head>
@@ -679,21 +681,21 @@ function render() {
     if (rb) rb.onclick = async () => { busy = true; render(); const r = await api('email'); busy = false; msg = r.ok ? null : {type:'err', text: errText(r.error)}; render(); };
     return;
   }
-  const terms = KEYS.map((k, i) => `<section class="term">
-      <h3><span class="num">${i + 1}</span>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p></section>`).join('');
+  const terms = KEYS.map((k, i) => `<section class="term"><span class="num">${i + 1}</span>
+      <div><h3>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p></div></section>`).join('');
   const fld = (k, type, extra) => `<label class="f" for="f_${k}">${t(k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(F[k])}" ${extra}${bad.includes(k) ? ' class="bad"' : ''}>`;
   v.innerHTML = `<div class="layout"><div class="col-main"><div class="intro"><h1>${t('title')}</h1>
       <p class="ctr co"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<span class="sep"><br></span>${t('licence')} ${esc(BOOT.company.licence)}</span></p>
       <p class="ctr muted">${t('intro')}</p></div>
     <div class="terms">${terms}</div></div>
     <aside class="col-side"><div class="sec"><span aria-hidden="true">📝</span><h2>${t('sec')}</h2><p class="muted">${t('sec_intro')}</p></div>
-    ${fld('name', 'text', 'autocomplete="name"')}
+    <div class="fields">${fld('name', 'text', 'autocomplete="name"')}
     ${fld('phone', 'tel', 'autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}
     ${fld('email', 'email', 'autocomplete="email" dir="ltr"')}
-    <p class="hint mt">${t('contact_note')}</p>
-    <label class="chk${bad.includes('final') ? ' bad' : ''}"><input type="checkbox" id="fin" ${F.final ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
+    <p class="hint mt">${t('contact_note')}</p></div>
+    <div class="tail"><label class="chk${bad.includes('final') ? ' bad' : ''}"><input type="checkbox" id="fin" ${F.final ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
     ${busy ? `<div class="msg info">${t('wait')}</div>` : ''}${M}
-    <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button></aside></div>`;
+    <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button></div></aside></div>`;
   const clear = (key, el) => { bad = bad.filter(x => x !== key); el.classList.remove('bad'); if (!bad.length && msg && msg.type === 'err') { msg = null; const m = $('#view .msg.err'); if (m) m.remove(); } };
   v.querySelectorAll('input[name]').forEach(i => i.oninput = () => { F[i.name] = i.value; if (i.value.trim()) clear(i.name, i); });
   $('#fin').onchange = e => { F.final = e.target.checked; if (F.final) clear('final', e.target.closest('.chk')); };
