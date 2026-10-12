@@ -1151,7 +1151,7 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .accb-e{font-size:var(--fs-md);font-weight:700;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
 .accb-p{font-size:var(--fs-sm);opacity:.8;direction:ltr;text-align:left}
 .accb-n{display:flex;flex-wrap:wrap;gap:6px}
-.accb-n i{font-style:normal;font-weight:700;font-size:var(--fs-sm);background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 10px}
+.accb-n i{font-style:normal;font-weight:800;font-size:var(--fs-sm);background:linear-gradient(180deg,#ffc84d,#f59e0b);color:#3b2300;border-radius:var(--r-pill);padding:3px 12px;box-shadow:0 2px 8px rgba(245,158,11,.35)}
 .accb-n em{font-style:normal;opacity:.6;font-size:var(--fs-sm)}
 .accb-o{display:flex;flex-direction:column;align-items:center;gap:2px}
 .accb-o b{background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 12px;font-size:var(--fs-sm)}
