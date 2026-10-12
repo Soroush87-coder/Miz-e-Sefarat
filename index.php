@@ -358,6 +358,62 @@ function tg_notify_change($c, $id, $old, $new) {
   } catch (Throwable $e) {}
 }
 
+// ---------- one-time import: Italy list (October 2026) ----------
+// Runs once (marker in logs). Replaces every Italy account / traveller / phone registration with this list;
+// adds phones and emails that are not in the desk yet. Other countries are not touched.
+function migrate_it_2026_10() {
+  if (getdoc('logs', 'mig-it-2026-10')) return;
+  $rows = [ // phone, traveller, email, appointment (YYYY-MM-DD or '')
+    ['525058619', 'mahdis sedigh', 'binbobo524@gmail.com', ''],
+    ['525058246', 'ELAHE NASERI RAD', 'mona.tava@icloud.com', '2026-10-16'],
+    ['525058074', 'mohammad ali nazarian', 'laaguamarina@gmail.com', '2026-10-16'],
+    ['521141402', 'Elena', 'moeveorg@gmail.com', ''],
+    ['523497473', 'Sadanand', 'zibakhatoon5@gmail.com', ''],
+    ['502624123', 'Seyedeh Ayesheh', 'almongrp@gmail.com', '2026-10-27'],
+    ['507182270', 'sana', 'dunakhanum@gmail.com', ''],
+    ['554172001', 'Nasser Taheri', 'laaguamarina@yahoo.es', '2026-10-27'],
+    ['585701931', 'marzieh ( somi )', 'haleshoma4@gmail.com', ''],
+    ['557048118', 'sajjad', 'talasodi56@gmail.com', ''],
+    ['557223724', 'reza saatchian', 'sormo70@gmail.com', ''],
+    ['501769396', 'mohebali', 'dynamic.range87@gmail.com', ''],
+    ['559488451', 'esmat', 'soroushtavakoli87@gmail.com', ''],
+    ['558014368', 'nakisa', 'gisgolabetoon22@gmail.com', ''],
+    ['554898741', 'diana bakhshi ( somi )', 'golimoli5533@gmail.com', ''],
+    ['', 'ALI AKBAR KOHAN BAKHSH', 'sougalsafar4@gmail.com', ''],
+    ['544440441', 'sousan zarrin', 'shaboosbab3@gmail.com', ''],
+  ];
+  $today = date('Y-m-d'); $pc = 'IT';
+  $all = []; foreach (pdo()->query("SELECT col, id, data FROM docs WHERE col IN ('sims','emails','accounts','regs','people','portals')")->fetchAll(PDO::FETCH_ASSOC) as $r) $all[$r['col']][$r['id']] = json_decode($r['data'], true);
+  $next = function ($prefix, $col) use (&$all) { $max = 0; foreach (array_keys($all[$col] ?? []) as $id) if (preg_match('/^' . $prefix . '-(\d+)$/', $id, $m)) $max = max($max, (int)$m[1]); $id = sprintf('%s-%02d', $prefix, $max + 1); $all[$col][$id] = []; return $id; };
+  pdo()->beginTransaction();
+  // 1) clear Italy: accounts, travellers, phone registrations
+  foreach (array_keys($all['accounts'] ?? []) as $id) if (strpos($id, $pc . '__') === 0) deldoc('accounts', $id);
+  foreach (array_keys($all['regs'] ?? []) as $id) if (strpos($id, $pc . '__') === 0) deldoc('regs', $id);
+  foreach ($all['people'] ?? [] as $id => $p) if (($p['portal'] ?? '') === $pc) deldoc('people', $id);
+  if (!isset($all['portals'][$pc])) putdoc('portals', $pc, ['code' => $pc, 'order' => count($all['portals'] ?? [])]);
+  // 2) add the list
+  $n = 0;
+  foreach ($rows as [$ph, $name, $mail, $appt]) {
+    $mail = strtolower(trim($mail)); $em = null;
+    foreach ($all['emails'] ?? [] as $id => $e) if (strtolower($e['address'] ?? '') === $mail) { $em = $id; break; }
+    if (!$em) { $em = $next('EM', 'emails'); $all['emails'][$em] = ['code' => $em, 'address' => $mail, 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('emails', $em, $all['emails'][$em]); }
+    $sim = '';
+    if ($ph !== '') {
+      $num = '+971' . $ph;
+      foreach ($all['sims'] ?? [] as $id => $m) if (($m['number'] ?? '') === $num) { $sim = $id; break; }
+      if (!$sim) { $op = in_array(substr($ph, 0, 2), ['50', '54', '56'], true) ? 'Etisalat' : (in_array(substr($ph, 0, 2), ['52', '55', '58'], true) ? 'du' : '');
+        $sim = $next('SIM', 'sims'); $all['sims'][$sim] = ['code' => $sim, 'number' => $num, 'operator' => $op, 'expiry' => '', 'status' => 'active', 'note' => '', 'createdAt' => $today]; putdoc('sims', $sim, $all['sims'][$sim]); }
+      putdoc('regs', "{$pc}__{$sim}", ['id' => "{$pc}__{$sim}", 'portal' => $pc, 'simId' => $sim, 'status' => 'registered', 'emailId' => $em, 'seen' => $today]);
+    }
+    $acc = "{$pc}__{$em}";
+    putdoc('accounts', $acc, ['id' => $acc, 'portal' => $pc, 'emailId' => $em, 'simId' => $sim, 'status' => 'active', 'lastVerified' => $today, 'createdAt' => $today, 'note' => '', 'updated' => $today]);
+    putdoc('people', bin2hex(random_bytes(10)), ['name' => $name, 'portal' => $pc, 'emailId' => $em, 'accountId' => $acc, 'status' => $appt ? 'booked' : 'waitlist', 'apptDate' => $appt, 'apptTime' => '', 'note' => '', 'passportId' => '', 'addedAt' => $today]);
+    $n++;
+  }
+  putdoc('logs', 'mig-it-2026-10', ['type' => 'edit', 'portal' => $pc, 'date' => $today, 'at' => date('c'), 'emailId' => '', 'simId' => '', 'note' => "لیست ایتالیا وارد شد: $n اکانت و مسافر"]);
+  pdo()->commit();
+}
+
 // ---------- API ----------
 if (isset($_GET['api'])) {
   if (!$authed) fail('login', 'unauthenticated', 401);
@@ -366,7 +422,7 @@ if (isset($_GET['api'])) {
   try {
     switch ($_GET['api']) {
       case 'all':
-        purge();
+        purge(); try { migrate_it_2026_10(); } catch (Throwable $e) { if (pdo()->inTransaction()) pdo()->rollBack(); }
         $out = []; foreach (COLS as $c) $out[$c] = [];
         foreach (pdo()->query('SELECT col, id, data FROM docs')->fetchAll(PDO::FETCH_ASSOC) as $r) if (isset($out[$r['col']])) $out[$r['col']][$r['id']] = json_decode($r['data']);
         foreach ($out as $c => $v) $out[$c] = (object)$v;
