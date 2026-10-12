@@ -221,7 +221,7 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
 header('X-Frame-Options: DENY');
 header('Permissions-Policy: camera=(self), geolocation=(), microphone=()');
-header("Content-Security-Policy: default-src 'none'; script-src 'nonce-$NONCE'; style-src 'nonce-$NONCE'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+header("Content-Security-Policy: default-src 'none'; script-src 'nonce-$NONCE'; style-src 'nonce-$NONCE' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
 header('Cache-Control: no-store');
 
 if (!is_https() && !in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true) && strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') !== 0) {
@@ -492,11 +492,14 @@ $BOOT = [
 <title>Travel Market — Visa Service Terms</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%235046e5%22/%3E%3Cpath%20d%3D%22M9.5%2016.5l4.5%204.5%208.5-9.5%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <meta name="theme-color" content="#f6f3ff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <style nonce="<?= $NONCE ?>">
 :root{--ink:#1e1b3a;--muted:#6b6880;--teal:#6d5dfc;--teal-d:#5b4bf0;--line:#e7e4f5;--err:#c0262d;--ok:#067647;--soft:#f5f3ff;--grad:linear-gradient(135deg,#6d5dfc 0%,#8b5cf6 55%,#c56cf0 100%)}
 *{box-sizing:border-box}
 html{background:#f7f3ff}
-body{margin:0;min-height:100vh;color:var(--ink);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Tahoma,"Geeza Pro",sans-serif;-webkit-text-size-adjust:100%;overflow-x:hidden;
+body{margin:0;min-height:100vh;color:var(--ink);font:17px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif;-webkit-text-size-adjust:100%;overflow-x:hidden;
  background:linear-gradient(160deg,#f3ecff 0%,#fff4f9 45%,#eef2ff 100%);background-attachment:fixed}
 .blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.75;z-index:0;pointer-events:none;animation:float 22s ease-in-out infinite alternate}
 .b1{width:420px;height:420px;background:#c4a1ff;top:-120px;left:-140px}
@@ -550,6 +553,39 @@ label.btn,label.link{position:relative;text-align:center;display:block}.vh{posit
 .chk.bad{border-color:var(--err)}
 .big{margin:8px 0 18px}
 .done{text-align:center;font-size:56px;margin:6px 0 10px}
+html[lang=fa] body,html[lang=fa] input,html[lang=fa] button{font-family:Vazirmatn,Tahoma,sans-serif}
+html[lang=ar] body,html[lang=ar] input,html[lang=ar] button{font-family:"IBM Plex Sans Arabic","Geeza Pro",Tahoma,sans-serif}
+.langs button[data-lang=fa]{font-family:Vazirmatn,Tahoma,sans-serif}.langs button[data-lang=ar]{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif}.langs button[data-lang=en]{font-family:Inter,sans-serif}
+#legal{font-family:inherit}
+/* desktop: everything on one screen */
+@media (min-width:1024px) and (min-height:600px){
+ html,body{height:100%;overflow:hidden}
+ .wrap{max-width:1280px;height:100vh;display:flex;flex-direction:column;padding:14px 28px 18px}
+ header{display:flex;align-items:center;justify-content:space-between;text-align:start;padding:0 4px 12px}
+ .brand{display:flex;align-items:baseline;gap:14px}.brand small{margin:0}
+ .logo{font-size:22px}.logo svg{width:32px;height:32px}
+ .langs{position:static;order:2}
+ .card{flex:1;min-height:0;padding:24px 30px;border-radius:26px;overflow:auto}
+ .layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:30px;height:100%}
+ .col-main{display:flex;flex-direction:column;min-height:0}
+ .intro{margin-bottom:12px}.intro h1{font-size:28px;margin:0 0 4px;text-align:start}
+ .intro p{text-align:start;font-size:14px;margin:0 0 4px}.co .sep br{display:none}.co .sep::after{content:" · "}
+ .terms{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0;align-content:start}
+ .term{margin:0;padding:16px 18px;border-radius:20px}.term h3{font-size:16px;margin-bottom:6px}.term p{font-size:14.5px;line-height:1.6}
+ .num{width:28px;height:28px;font-size:13px;border-radius:10px}
+ .col-side{display:flex;flex-direction:column;background:var(--soft);border-radius:22px;padding:18px 22px;min-height:0}
+ .sec{margin:0 0 2px;text-align:start}.sec span{display:none}.sec h2{font-size:22px;margin:0 0 2px;text-align:start}.sec p{font-size:13.5px;margin:0}
+ label.f{margin:10px 6px 5px;font-size:13px}
+ input[type=text],input[type=email],input[type=tel]{padding:11px 18px;font-size:15px}
+ .hint{margin-top:6px}.col-side .chk{margin-top:10px;padding:12px 14px;font-size:14px}
+ .col-side .btn{margin-top:auto;padding:14px 20px;font-size:16px}
+ .col-side .msg{padding:10px 12px;font-size:13.5px;margin-top:8px}
+ .card .done{font-size:48px}
+}
+@media (min-width:1024px) and (min-height:600px) and (max-height:760px){
+ .term p{font-size:13.5px;line-height:1.5}.term{padding:12px 16px}.intro h1{font-size:24px}
+ input[type=text],input[type=email],input[type=tel]{padding:9px 16px}label.f{margin-top:7px}
+}
 </style>
 </head>
 <body>
@@ -646,18 +682,18 @@ function render() {
   const terms = KEYS.map((k, i) => `<section class="term">
       <h3><span class="num">${i + 1}</span>${esc(termText(k, '_t'))}</h3><p>${esc(termText(k, ''))}</p></section>`).join('');
   const fld = (k, type, extra) => `<label class="f" for="f_${k}">${t(k)}</label><input id="f_${k}" name="${k}" type="${type}" value="${esc(F[k])}" ${extra}${bad.includes(k) ? ' class="bad"' : ''}>`;
-  v.innerHTML = `<div class="intro"><h1>${t('title')}</h1>
-      <p class="ctr"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<br>${t('licence')} ${esc(BOOT.company.licence)}</span></p>
+  v.innerHTML = `<div class="layout"><div class="col-main"><div class="intro"><h1>${t('title')}</h1>
+      <p class="ctr co"><b>${esc(BOOT.company.legal)}</b><br><span class="muted">${esc(BOOT.company.arabic)}<span class="sep"><br></span>${t('licence')} ${esc(BOOT.company.licence)}</span></p>
       <p class="ctr muted">${t('intro')}</p></div>
-    ${terms}
-    <div class="sec"><span aria-hidden="true">📝</span><h2>${t('sec')}</h2><p class="muted">${t('sec_intro')}</p></div>
+    <div class="terms">${terms}</div></div>
+    <aside class="col-side"><div class="sec"><span aria-hidden="true">📝</span><h2>${t('sec')}</h2><p class="muted">${t('sec_intro')}</p></div>
     ${fld('name', 'text', 'autocomplete="name"')}
     ${fld('phone', 'tel', 'autocomplete="tel" dir="ltr" placeholder="+971 5x xxx xxxx"')}
     ${fld('email', 'email', 'autocomplete="email" dir="ltr"')}
     <p class="hint mt">${t('contact_note')}</p>
     <label class="chk${bad.includes('final') ? ' bad' : ''}"><input type="checkbox" id="fin" ${F.final ? 'checked' : ''}><span>${esc(BOOT.decl[lang])}</span></label>
     ${busy ? `<div class="msg info">${t('wait')}</div>` : ''}${M}
-    <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button>`;
+    <button class="btn" id="sub" type="button" ${busy ? 'disabled' : ''}>${t('submit')}</button></aside></div>`;
   const clear = (key, el) => { bad = bad.filter(x => x !== key); el.classList.remove('bad'); if (!bad.length && msg && msg.type === 'err') { msg = null; const m = $('#view .msg.err'); if (m) m.remove(); } };
   v.querySelectorAll('input[name]').forEach(i => i.oninput = () => { F[i.name] = i.value; if (i.value.trim()) clear(i.name, i); });
   $('#fin').onchange = e => { F.final = e.target.checked; if (F.final) clear('final', e.target.closest('.chk')); };
