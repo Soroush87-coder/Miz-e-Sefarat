@@ -717,6 +717,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tk-i span{color:var(--muted);font-variant-numeric:tabular-nums}
 .tk-i em{font-style:normal;font-weight:800;font-size:var(--fs-2xs);color:var(--green-ink);background:var(--green-soft,#e3f6ee);border-radius:var(--r-pill);padding:1px 7px}
 .tk-i.soon em{color:var(--amber-ink);background:var(--amber-soft)}
+.spick{margin-top:10px;font-size:var(--fs-sm)}
+.spick summary{cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0}
+.spick .field{margin-top:8px}
+.spick select{width:100%}
 .alert{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface);border-radius:var(--r-lg);padding:11px 16px;margin-bottom:10px;box-shadow:var(--shadow);border-inline-start:5px solid var(--lvl)}
 .alert .t{font-weight:700}.alert .d{color:var(--muted);font-size:var(--fs-sm)}
 .lvl-red{--lvl:var(--red)}.lvl-amber{--lvl:var(--amber)}.lvl-teal{--lvl:var(--teal)}
@@ -1753,7 +1757,7 @@ function renderPassports(){
 }
 
 // ---------- work queue ----------
-const skipAcc = new Map();
+const skipAcc = new Map(), stepPick = new Map();   // stepPick: "PC|i" → {e, sim} chosen by hand
 const lastPlans = {};
 function planFor(pc){
   const waiting = S.passports.filter(x => x.portal === pc && x.status === "waiting").sort((a,b) => (a.at || "").localeCompare(b.at || ""));
@@ -1783,6 +1787,12 @@ function planFor(pc){
   for (const s of steps){ const n = s.add.length, pref = s.kind === "existing" ? s.a?.simId : "";
     const c = pref && left(pref) >= n ? pref : simsAll().map(m => m.code).filter(c => left(c) >= n).sort((x, y) => left(x) - left(y))[0] || "";
     s.sim = c ? S.sims.get(c) : null; if (c) pend.set(c, (pend.get(c) || 0) + n); }
+  // email / phone the user picked by hand for a step
+  steps.forEach((s, i) => { const ov = stepPick.get(pc + "|" + i); if (!ov) return;
+    if (ov.e && S.emails.has(ov.e)){ const id = accId(pc, ov.e), a = S.accounts.get(id), st = accStatus(a);
+      s.e = S.emails.get(ov.e);
+      if (st === "active" || st === "check") Object.assign(s, {kind:"existing", id, a, st, occ:occupants(id).length}); else Object.assign(s, {kind:"new", id:"", a:null, st, occ:0}); }
+    if (ov.sim !== undefined) s.sim = S.sims.get(ov.sim) || null; });
   lastPlans[pc] = steps;
   return {waiting, steps};
 }
@@ -1804,10 +1814,19 @@ function stepCard(pc, s, i, total){
     : `<div class="sc-warn" style="flex:1">${!s.e ? "ایمیل آزاد برای این کشور نمانده. " : ""}${!s.sim ? "شماره آزاد برای این کشور نمانده. " : ""}یکی اضافه کنید.</div>${!s.e ? `<button class="btn sm" type="button" data-act="email">+ ایمیل</button>` : ""}${!s.sim ? `<button class="btn sm" type="button" data-act="sim">+ شماره</button>` : ""}`;
   return `<div class="task ${ex ? "" : "newacc"}">
     <div class="task-h"><span class="sc-n">${faN(i + 1)}</span><div><small class="task-k">${total > 1 ? `کار ${faN(i + 1)} از ${faN(total)} · ` : ""}قدم بعدی</small><b>${title}</b><small>${sub}</small></div></div>
+    ${s.e && usesE(pc, s.e.code).length + s.add.length > CAP ? `<div class="sc-warn">این ایمیل برای ${esc(pName(pc))} فقط ${faN(Math.max(0, CAP - usesE(pc, s.e.code).length))} جای خالی دارد</div>` : ""}
+    ${s.sim && simLeft(pc, s.sim.code) < s.add.length ? `<div class="sc-warn">این شماره برای ${esc(pName(pc))} فقط ${faN(simLeft(pc, s.sim.code))} جای خالی دارد</div>` : ""}
     ${ex && s.st === "check" ? `<div class="sc-warn">${s.a?.lastVerified ? `آخرین ورود ${rel(s.a.lastVerified)}` : "آخرین ورود ثبت نشده"} · ممکن است پاک شده باشد</div>` : ""}
     <div class="task-grid">
       <div><div class="task-lbl">مسافران</div><div class="plist2">${s.add.map(prow2).join("")}</div></div>
-      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div></div>
+      <div><div class="task-lbl">${ex ? "ورود به اکانت" : "ساخت اکانت"}</div><div class="sc-cred">${credLine("ایمیل", s.e?.address)}${ex ? credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "") : credLine("شماره", s.sim ? prettyPhone(s.sim.number) : "", s.sim ? localPhone(s.sim.number) : "")}</div><div class="vfs-row">${vfsBtn(pc)}</div>
+        <details class="spick" ${stepPick.has(pc + "|" + i) ? "open" : ""}><summary>تغییر ایمیل یا شماره</summary>
+          <div class="field"><label>ایمیل</label><select data-spick="e" data-id="${esc(pc)}|${i}">${emailsAll().map(e => { const n = usesE(pc, e.code).length, st = accStatus(S.accounts.get(accId(pc, e.code)));
+            return `<option value="${esc(e.code)}" ${e.code === s.e?.code ? "selected" : ""}>${esc(e.address)} — ${st === "none" ? "VFS گفته اکانت نیست" : `${faN(n)}/${faN(CAP)}`}${st === "active" || st === "check" ? " · اکانت دارد" : ""}</option>`; }).join("")}</select></div>
+          <div class="field"><label>شماره</label><select data-spick="sim" data-id="${esc(pc)}|${i}"><option value="">— بدون شماره —</option>${simsAll().map(m => { const n = usesS(pc, m.code).length, t = simTaken(pc, m.code);
+            return `<option value="${esc(m.code)}" ${m.code === s.sim?.code ? "selected" : ""}>${esc(localPhone(m.number))} — ${t ? "VFS گفته تکراری است" : `${faN(n)}/${faN(CAP)}`}</option>`; }).join("")}</select></div>
+          ${stepPick.has(pc + "|" + i) ? `<button class="btn sm" type="button" data-act="spickreset" data-id="${esc(pc)}|${i}">برگرد به پیشنهاد سیستم</button>` : ""}
+        </details></div>
     </div>
     <div class="task-acts">${ex || ok ? (() => { const [main, ...rest] = acts.split('<button type="button" class="res').filter(Boolean).map(x => '<button type="button" class="res' + x);
       return `${main}<details class="res-more"><summary>مشکل داشت؟</summary><div class="res-grid">${rest.join("")}</div></details>`; })() : acts}</div></div>`;
@@ -1873,6 +1892,7 @@ async function assignTo(pc, em, items, simId){
 }
 async function queueAct(a, key){
   const [pc, i] = key.split("|"), s = (lastPlans[pc] || [])[+i]; if (!s) return;
+  if (a === "q_ok" || a === "q_new" || a === "q_gone") for (const k of [...stepPick.keys()]) if (k.startsWith(pc + "|")) stepPick.delete(k);
   if (a === "q_ok"){ if (await assignTo(pc, s.e.code, s.add, s.sim?.code)) toast(`${faN(s.add.length)} نفر به Waitlist رفتند`); }
   if (a === "q_gone"){ await quick("gone", s.id); }
   if (a === "q_skip"){ if (!skipAcc.has(pc)) skipAcc.set(pc, new Set()); skipAcc.get(pc).add(s.id); render(); toastUndo("این اکانت کنار رفت", () => { skipAcc.get(pc)?.delete(s.id); render(); }); }
@@ -2673,6 +2693,7 @@ document.addEventListener("click", e => {
   if (a === "gopass"){ tab = "pass"; passFilter = id; passStatus = "waiting"; lsSet("tab4", tab); render(); window.scrollTo({top:0}); return; }
   if (a === "clearpick"){ picked.clear(); render(); return; }
   if (!canWrite && a !== "acc") { toast("این صفحه برای شما فقط خواندنی است"); return; }
+  if (a === "spickreset"){ stepPick.delete(id); render(); return; }
   if (a.startsWith("q_")){ b.disabled = true; (a === "q_skip" ? queueAct(a, id) : undoable(() => queueAct(a, id))).finally(() => { b.disabled = false; }); return; }
   if (["ok","gone","phonetaken","phonefree"].includes(a)){ b.disabled = true; const inSheet = !!b.closest("#sheet"); quick(a, id).finally(() => { b.disabled = false; if (a === "ok" && inSheet) openAccount(id); }); return; }
   ({upload:() => uploadPassports(id || ""), editpass:() => editPassport(id), assign:assignPassports, newacc:() => newAccount(id, b.dataset.email || ""), acc:() => openAccount(id), addpeople:() => addPeople(id), person:() => editPerson(id), sim:() => editSim(id), email:() => editEmail(id), addportal:addPortal, bulk:bulkAdd}[a] || (() => {}))();
@@ -2684,6 +2705,8 @@ document.addEventListener("drop", e => { const q = $("#qdrop"); if (!q || !$("#s
 document.addEventListener("change", e => { const c = e.target.closest("[data-pick]"); if (!c) return; c.checked ? picked.add(c.dataset.pick) : picked.delete(c.dataset.pick); const y = window.scrollY; render(); window.scrollTo({top:y}); });
 document.addEventListener("input", e => { if (e.target.id === "passQ"){ passQ = e.target.value; const pos = e.target.selectionStart; render(); const q = $("#passQ"); if (q){ q.focus(); q.setSelectionRange(pos, pos); } return; } if (e.target.id === "peopleQ"){ peopleQ = e.target.value; const pos = e.target.selectionStart; render(); const q = $("#peopleQ"); if (q){ q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("change", e => { if (e.target.id === "logPortal"){ logPortal = e.target.value; render(); } });
+document.addEventListener("change", e => { const t = e.target.closest("[data-spick]"); if (!t) return;
+  const k = t.dataset.id, ov = {...(stepPick.get(k) || {})}; ov[t.dataset.spick] = t.value; stepPick.set(k, ov); const y = window.scrollY; render(); window.scrollTo({top:y}); });
 $("#sheetClose").onclick = closeSheet; $("#sheetCancel").onclick = closeSheet; $("#scrim").onclick = closeSheet;
 document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("#dz").hidden) { $("#dz").hidden = true; return; } if (!$("#sheet").hidden) closeSheet(); });
 $("#sheetForm").addEventListener("submit", async e => { e.preventDefault(); if (!sheetSave) return; const btn = $("#sheetSave"); btn.disabled = true; const ok = await sheetSave(); btn.disabled = false; if (ok) closeSheet(); });
