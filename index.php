@@ -1213,6 +1213,34 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 @media (max-width:720px){.wl-tiles{gap:8px}.wl-tile{padding:10px 12px}.wl-tile b{font-size:var(--fs-xl)}
   .wl-r,.wl-r.bk{grid-template-columns:auto minmax(0,1fr);gap:8px 12px}.wl-r:not(.bk) .wl-main{grid-column:1/-1}
   .wl-acc2{grid-column:1/-1;align-items:flex-start}.wl-acts{grid-column:1/-1;justify-content:flex-start}}
+/* Email & phone overview matrix */
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r-pill);background:var(--soft);border:1px solid var(--line);margin-bottom:14px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:800;font-size:var(--fs-sm);padding:6px 16px;border-radius:var(--r-pill);cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.mx-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px;align-items:start}
+.mx-sec .sec-h{padding-bottom:4px}
+.mx{border-collapse:separate;border-spacing:0;width:100%}
+.mx th,.mx td{padding:3px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.mx thead th{position:sticky;top:0;background:var(--surface);z-index:1;font-weight:700;vertical-align:bottom;padding-bottom:6px}
+.mx thead th small{display:block;font-size:var(--fs-2xs);color:var(--muted);white-space:nowrap;margin-top:2px}
+.mx th.mx-k{position:sticky;right:0;background:var(--surface);z-index:2;text-align:right;width:1%;white-space:nowrap}
+.mx-l{display:flex;align-items:center;gap:8px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer;padding:2px 4px;max-width:210px}
+.mx-l .mono{font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;direction:ltr}
+.mx-l:hover .mono{color:var(--accent)}
+.mx tr.mx-off{opacity:.45}
+.mx tbody tr:hover td,.mx tbody tr:hover th{background:var(--soft)}
+.mx-c{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;border:0;font:inherit;font-weight:800;font-size:var(--fs-xs);font-style:normal;padding:0;vertical-align:middle}
+button.mx-c{cursor:pointer}
+.mx-c.has{background:var(--nv);color:#fff}
+.mx-c.zero{background:transparent;border:2px solid var(--nv-2)}
+.mx-c.full{background:var(--red-ink);color:#fff}
+.mx-c.chk{outline:2px dashed var(--amber);outline-offset:1px}
+.mx-c.reg{background:var(--amber-soft);color:var(--amber-ink)}
+.mx-c.gone{color:var(--muted)}
+.mx-c.free{width:6px;height:6px;border-radius:50%;background:var(--line-strong)}
+.mx-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:var(--fs-xs);color:var(--muted);margin:0 2px 12px}
+.mx-legend span{display:inline-flex;align-items:center;gap:6px}
+.mx-legend .mx-c{width:20px;height:20px;font-size:var(--fs-2xs)}.mx-legend .mx-c.free{width:6px;height:6px}
 /* Stage bar: the four steps of the work, on every page */
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin-bottom:20px}
 .fl{display:flex;align-items:center;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:right;font:inherit;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -1886,6 +1914,29 @@ function bookSheet(ids){
       toast(`وقت ${faN(ps.length)} نفر ثبت شد`); return true; }, "", "ثبت وقت");
 }
 
+let resView = "grid";
+// Overview: phones × countries and emails × countries; each cell is that account (number = travellers on it)
+function resMatrix(){
+  const ps = portalsList(), off = x => x.status === "inactive", ord = (x, y) => off(x) - off(y) || x.code.localeCompare(y.code);
+  if (!ps.length) return `<section class="sec"><div class="empty">اول از صفحه «کشورها» کشور اضافه کنید.</div></section>`;
+  const head = `<thead><tr><th class="mx-k"></th>${ps.map(p => `<th title="${esc(pName(p.code))}">${flagEl(p.code, "sm")}<small>${esc(pName(p.code))}</small></th>`).join("")}</tr></thead>`;
+  const acc = (a, tip) => { const n = occupants(a.id).length;
+    return `<td><button type="button" class="mx-c ${n ? "has" : "zero"} ${n >= CAP ? "full" : ""} ${accStatus(a) === "check" ? "chk" : ""}" data-act="acc" data-id="${esc(a.id)}" title="${esc(pName(a.portal) + " · " + tip + " · " + n + "/" + CAP)}">${n ? faN(n) : ""}</button></td>`; };
+  const free = `<td><span class="mx-c free"></span></td>`;
+  const sims = [...S.sims.values()].sort(ord), ems = [...S.emails.values()].sort(ord);
+  const sRows = sims.map(m => `<tr class="${off(m) ? "mx-off" : ""}"><th class="mx-k"><button type="button" class="mx-l" data-act="resopen" data-kind="sim" data-id="${esc(m.code)}"><span class="tag">${esc(m.code)}</span><span class="mono">${esc(prettyPhone(m.number))}</span></button></th>${ps.map(p => {
+      const a = [...S.accounts.values()].find(x => x.portal === p.code && x.simId === m.code && liveAcc(x));
+      if (a) return acc(a, S.emails.get(a.emailId)?.address || a.emailId);
+      return phoneOn(p.code, m.code).kind === "orphan" ? `<td><button type="button" class="mx-c reg" data-act="phonefree" data-id="${esc(p.code + "__" + m.code)}" title="${esc(pName(p.code))}: ثبت‌شده در VFS بدون اکانت (برای آزاد کردن بزنید)">×</button></td>` : free; }).join("")}</tr>`).join("");
+  const eRows = ems.map(e => `<tr class="${off(e) ? "mx-off" : ""}"><th class="mx-k"><button type="button" class="mx-l" data-act="resopen" data-kind="email" data-id="${esc(e.code)}"><span class="tag">${esc(e.code)}</span><span class="mono">${esc(e.address)}</span></button></th>${ps.map(p => {
+      const a = S.accounts.get(accId(p.code, e.code));
+      if (liveAcc(a)) return acc(a, a.simId ? prettyPhone(S.sims.get(a.simId)?.number || "") : "بدون شماره");
+      return accStatus(a) === "none" ? `<td><span class="mx-c gone" title="${esc(pName(p.code))}: اکانت پاک شده">–</span></td>` : free; }).join("")}</tr>`).join("");
+  const legend = `<div class="mx-legend"><span><i class="mx-c has">۳</i> اکانت با ۳ مسافر</span><span><i class="mx-c zero"></i> اکانت بدون مسافر</span><span><i class="mx-c has full">۵</i> پر</span><span><i class="mx-c reg">×</i> ثبت‌شده در VFS، بدون اکانت</span><span><i class="mx-c free"></i> آزاد</span></div>`;
+  return `${legend}<div class="mx-wrap">
+    <section class="sec mx-sec"><div class="sec-h"><h2>📱 شماره‌ها <small>${faN(sims.length)}</small></h2></div><div class="table-wrap"><table class="mx">${head}<tbody>${sRows || ""}</tbody></table></div></section>
+    <section class="sec mx-sec"><div class="sec-h"><h2>📧 ایمیل‌ها <small>${faN(ems.length)}</small></h2></div><div class="table-wrap"><table class="mx">${head}<tbody>${eRows || ""}</tbody></table></div></section></div>`;
+}
 function renderRes(){
   const none = `<span class="rs-none">هنوز روی هیچ کشوری ست نشده</span>`;
   const local = e => (e?.address || "").split("@")[0];
@@ -1924,10 +1975,13 @@ function renderRes(){
   const sFree = sims.filter(m => !off(m) && !liveAccs.some(a => a.simId === m.code)).length, sOff = sims.filter(off).length;
   const eFree = ems.filter(e => !off(e) && !liveAccs.some(a => a.emailId === e.code)).length, eOff = ems.filter(off).length;
   const extra = (f, o) => [f ? `${faN(f)} بدون کشور` : "", o ? `${faN(o)} استفاده نشه` : ""].filter(Boolean).join(" · ");
-  return `<div class="page-h"><div><h1>ایمیل و شماره</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ibtn i-sim" type="button" data-act="sim"><i><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></i>شماره جدید</button><button class="btn ibtn i-mail" type="button" data-act="email"><i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg></i>ایمیل جدید</button><button class="btn primary ibtn i-bulk" type="button" data-act="bulk"><i><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></i>افزودن گروهی</button></div></div>
-
+  const all = `<div class="page-h"><div><h1>ایمیل و شماره</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ibtn i-sim" type="button" data-act="sim"><i><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></i>شماره جدید</button><button class="btn ibtn i-mail" type="button" data-act="email"><i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg></i>ایمیل جدید</button><button class="btn primary ibtn i-bulk" type="button" data-act="bulk"><i><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></i>افزودن گروهی</button></div></div>
+<!--RES-BODY-->
     <section class="sec"><div class="sec-h"><h2>شماره‌ها ${cnt(S.sims.size, extra(sFree, sOff))}</h2></div>${S.sims.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>شماره</th><th>کشور و ایمیلی که با این شماره ست شده</th><th></th></tr></thead><tbody>${sRows}</tbody></table></div>` : `<div class="empty">شماره‌ای نیست.</div>`}</section>
     <section class="sec"><div class="sec-h"><h2>ایمیل‌ها ${cnt(S.emails.size, extra(eFree, eOff))}</h2></div>${S.emails.size ? `<div class="table-wrap"><table class="rs-table"><thead><tr><th>کد</th><th>آدرس</th><th>کشور و شماره‌ای که با این ایمیل ست شده</th><th></th></tr></thead><tbody>${eRows}</tbody></table></div>` : `<div class="empty">ایمیلی نیست.</div>`}</section>`;
+  const [head, list] = all.split("<!--RES-BODY-->");
+  const tog = `<div class="seg" role="tablist"><button type="button" class="${resView === "grid" ? "on" : ""}" data-act="resview" data-id="grid">نمای کلی</button><button type="button" class="${resView === "list" ? "on" : ""}" data-act="resview" data-id="list">جدول کامل</button></div>`;
+  return head + tog + (resView === "list" ? list : resMatrix());
 }
 
 let peopleCountry = "", peopleStatus = "";
@@ -2526,6 +2580,7 @@ document.addEventListener("click", e => {
   if (a === "pcountry"){ peopleCountry = id; render(); return; }
   if (a === "wlshow"){ wlShow = id; render(); return; }
   if (a === "wltab"){ wlTab = id; render(); return; }
+  if (a === "resview"){ resView = id; render(); return; }
   if (a === "wlc"){ wlCountry = id; render(); return; }
   if (a === "book"){ if (canWrite) bookSheet([id]); return; }
   if (a === "bookall"){ if (canWrite) bookSheet(S.people.filter(p => p.accountId === id && p.status === "waitlist").map(p => p.id)); return; }
