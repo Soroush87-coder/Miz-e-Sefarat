@@ -1157,7 +1157,22 @@ button.rs-chip:hover{border-color:var(--nv-2);background:var(--surface)}
 .accb-o b{background:var(--nv-chip);border-radius:var(--r-pill);padding:2px 12px;font-size:var(--fs-sm)}
 .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
 .accb-o small{font-size:var(--fs-2xs);color:var(--amber)}
-@media (max-width:640px){.accb{grid-template-columns:1fr auto}.accb-n{grid-column:1/-1;grid-row:2}}
+/* country page: calm list — traveller names first, account details muted */
+.accl{gap:0;margin:4px 18px 18px;padding:0;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.accl .accb{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;background:transparent;color:var(--ink);border-radius:0;border-bottom:1px solid var(--line);padding:11px 16px}
+.accl .accb:last-child{border-bottom:0}
+.accl .accb:hover{background:var(--soft)}
+.accl .accb-n i{background:var(--amber-soft);color:var(--amber-ink);box-shadow:none;font-weight:700;padding:2px 10px}
+.accl .accb-n em{color:var(--muted)}
+.accl .accb-e{font-size:var(--fs-sm);font-weight:600}
+.accl .accb-p{font-size:var(--fs-xs);color:var(--muted);opacity:1}
+.accl .accb-o b{background:var(--soft);color:var(--muted);font-weight:700}
+.accl .accb-o.full b{background:var(--red-soft);color:var(--red-ink)}
+.cstats{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:var(--fs-sm);font-weight:700;opacity:.95}
+.cstats span{display:flex;align-items:baseline;gap:5px}
+.cstats b{font-size:var(--fs-lg);font-weight:800;font-variant-numeric:tabular-nums}
+.cstats .warn{background:rgba(255,255,255,.2);border-radius:var(--r-pill);padding:0 10px}
+@media (max-width:640px){.accb{grid-template-columns:1fr auto}.accb-n{grid-column:1/-1;grid-row:2}.accl .accb-n{grid-row:1}.accl .accb-c{grid-row:2;grid-column:1}}
 .res-open{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .res-big{display:flex;align-items:center;gap:10px;font-size:var(--fs-xl);font-weight:800;color:var(--nv);direction:ltr;justify-content:flex-end}
 .res-acc{display:flex;flex-direction:column;gap:6px;background:var(--nv);color:#fff;border-radius:var(--r-lg);padding:14px 16px}
@@ -1573,7 +1588,7 @@ function renderCountry(pc){
   const s = countryStats(pc);
   let h = `<div style="--cc:${flagColors(pc)[0] || colorOf(pc)}"><div class="hero"${flagBg(pc)}><div class="hero-top"><div><button class="crumb" type="button" data-act="back"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>همه کشورها</button><h1>${flagEl(pc)}${esc(pName(pc))}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="upload" data-id="${esc(pc)}">+ آپلود پاسپورت</button></div></div>
-    <div class="stats"><div class="stat active"><b>${faN(s.active)}</b><span>اکانت فعال</span></div><div class="stat check"><b>${faN(s.check)}</b><span>باید چک شود</span></div><div class="stat"><b>${faN(s.free)}</b><span>جای خالی مسافر</span></div><div class="stat"><b>${faN(s.people)}</b><span>مسافر در جریان</span></div><div class="stat"><b>${faN(s.unused + s.none)}</b><span>ایمیل آزاد</span></div><div class="stat"><b>${faN(s.freePhones)}</b><span>شماره آزاد</span></div></div></div>`;
+    <div class="cstats"><span><b>${faN(s.active)}</b>اکانت فعال</span><span><b>${faN(s.people)}</b>مسافر</span><span><b>${faN(s.free)}</b>جای خالی</span><span><b>${faN(s.unused + s.none)}</b>ایمیل آزاد</span><span><b>${faN(s.freePhones)}</b>شماره آزاد</span>${s.check ? `<span class="warn"><b>${faN(s.check)}</b>باید چک شود</span>` : ""}</div></div>`;
   h += globalAlerts(pc);
   h += `<section class="sec"><div class="sec-h"><h2>اکانت‌های ${esc(pName(pc))}</h2><small class="sec-hint">روی هر اکانت بزنید تا مسافرهایش را ببینید</small></div>${accountsList(pc) || `<div class="empty">هنوز اکانتی برای ${esc(pName(pc))} نیست. پاسپورت آپلود کنید؛ سایت ایمیل و شماره برای ساخت اکانت پیشنهاد می‌دهد.</div>`}</section>`;
   h += `</div>`;
@@ -1586,8 +1601,8 @@ function accountsList(pc){
   if (!accs.length) return "";
   return `<div class="accl">${accs.map(a => { const e = S.emails.get(a.emailId), m = a.simId ? S.sims.get(a.simId) : null, occ = occupants(a.id), st = accStatus(a);
     return `<button type="button" class="accb" data-act="acc" data-id="${esc(a.id)}">
-      <span class="accb-c"><span class="mono accb-e">${esc(e?.address || a.emailId)}</span><span class="mono accb-p">${m ? esc(prettyPhone(m.number)) : "بدون شماره"}</span></span>
       <span class="accb-n">${occ.length ? occ.map(p => `<i>${esc(p.name)}</i>`).join("") : `<em>بدون مسافر</em>`}</span>
+      <span class="accb-c"><span class="mono accb-e">${esc(e?.address || a.emailId)}</span><span class="mono accb-p">${m ? esc(prettyPhone(m.number)) : "بدون شماره"}</span></span>
       <span class="accb-o ${occ.length >= CAP ? "full" : ""}">${st === "check" ? `<small>⚠ چک شود</small>` : ""}<b>${faN(occ.length)}/${faN(CAP)}</b></span></button>`; }).join("")}</div>`;
 }
 // popup for one phone or email: every country it is on, the paired email/phone and the travellers
