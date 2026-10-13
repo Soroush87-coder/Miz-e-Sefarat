@@ -9,4 +9,5 @@ return [
   'telegram_token'    => '',            // توکن ربات تلگرام از @BotFather
   'telegram_chat'     => '',            // شناسه چت‌ها با ویرگول، مثلاً '111222333,444555666'
   'telegram_notify'   => true,          // نوتیف خودکار در تلگرام
+  'telegram_notify_to'=> '',            // فقط این شناسه‌ها نوتیف خودکار بگیرند (خالی = همه‌ی telegram_chat)
 ];

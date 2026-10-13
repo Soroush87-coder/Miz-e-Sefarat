@@ -15,6 +15,7 @@ $CONFIG = [
   'telegram_token'    => '',                   // اختیاری: توکن ربات تلگرام از @BotFather
   'telegram_chat'     => '',                   // شناسه چت هر نفر (یا گروه)، با ویرگول، مثلاً '111,222'. ربات خودش شناسه را می‌گوید
   'telegram_notify'   => true,                 // نوتیف خودکار در گروه (اکانت جدید، مسافر، وقت)
+  'telegram_notify_to'=> '',                   // چه کسانی نوتیف خودکار بگیرند (خالی = همه‌ی telegram_chat)؛ بقیه فقط از منوی بات استفاده می‌کنند
 ];
 // ==========================================================================
 // تنظیمات ثابت: اگر کنار این فایل config.php باشد، مقدارهایش جای بالا را می‌گیرد.
@@ -225,6 +226,9 @@ function tg_api($method, $params) {
   return $r === false ? null : json_decode($r, true);
 }
 function tg_secret() { global $CONFIG; return substr(hash('sha256', 'miz:' . $CONFIG['telegram_token']), 0, 32); }
+// who gets automatic notifications: telegram_notify_to if set (only ids that also have bot access), else everyone in telegram_chat
+function tg_notify_chats() { global $CONFIG; $to = array_values(array_filter(array_map('trim', explode(',', (string)($CONFIG['telegram_notify_to'] ?? ''))), 'strlen'));
+  return $to ? array_values(array_intersect($to, tg_chats())) : tg_chats(); }
 function tg_chats() { global $CONFIG; return array_values(array_filter(array_map('trim', explode(',', (string)$CONFIG['telegram_chat'])), 'strlen')); }
 function tg_all() { $o = []; foreach (pdo()->query("SELECT col, id, data FROM docs WHERE col IN ('sims','emails','portals','accounts','regs','people')")->fetchAll(PDO::FETCH_ASSOC) as $r) $o[$r['col']][$r['id']] = json_decode($r['data'], true) + ['id' => $r['id']]; return $o; }
 function tg_flag($pc) { $pc = $pc === 'UK' ? 'GB' : $pc; if (!preg_match('/^[A-Z]{2}$/', $pc)) return '🏳'; return mb_chr(0x1F1E6 + ord($pc[0]) - 65) . mb_chr(0x1F1E6 + ord($pc[1]) - 65); }
@@ -346,7 +350,7 @@ function tg_setup() {
 // one-line notification to the team chat when something worth knowing changes
 function tg_notify_change($c, $id, $old, $new) {
   global $CONFIG;
-  if ($CONFIG['telegram_token'] === '' || empty($CONFIG['telegram_notify']) || !tg_chats()) return;
+  if ($CONFIG['telegram_token'] === '' || empty($CONFIG['telegram_notify']) || !tg_notify_chats()) return;
   try {
     $all = tg_all(); $t = '';
     if ($c === 'accounts' && $new && tg_st($new) === 'active' && (!$old || !in_array(tg_st($old), ['active', 'check'], true))) {
@@ -357,7 +361,7 @@ function tg_notify_change($c, $id, $old, $new) {
       elseif (($new['status'] ?? '') === 'booked' && ($old['status'] ?? '') !== 'booked') $t = '📅 ' . tg_flag($pc) . ' وقت گرفته شد: <b>' . tg_h($new['name'] ?? '') . '</b> · ' . tg_h(trim(($new['apptDate'] ?? '') . ' ' . ($new['apptTime'] ?? '')));
       elseif (in_array($new['status'] ?? '', ['removed', 'done'], true) && !in_array($old['status'] ?? '', ['removed', 'done'], true)) $t = '🟢 ' . tg_flag($pc) . ' یک جا آزاد شد' . "\n" . $pair;
     }
-    if ($t !== '') foreach (tg_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
+    if ($t !== '') foreach (tg_notify_chats() as $chat) tg_api('sendMessage', ['chat_id' => $chat, 'text' => $t, 'parse_mode' => 'HTML']);
   } catch (Throwable $e) {}
 }
 
